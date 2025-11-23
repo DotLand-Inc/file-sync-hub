@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <!-- Common project settings -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <!-- Company information -->
+    <Company>Dotland</Company>
+    <Product>FileSyncHub</Product>
+    <Copyright>Copyright © Dotland $([System.DateTime]::Now.Year)</Copyright>
+
+    <!-- Build output -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>
