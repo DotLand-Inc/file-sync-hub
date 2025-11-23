@@ -7,6 +7,7 @@ public interface IUnitOfWork : IDisposable
 {
     IDocumentRepository Documents { get; }
     IDocumentVersionRepository DocumentVersions { get; }
+    IVersioningConfigurationRepository VersioningConfigurations { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     Task CommitTransactionAsync(CancellationToken cancellationToken = default);

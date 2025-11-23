@@ -7,9 +7,9 @@ public abstract class Entity
 {
     public Guid Id { get; protected set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; protected set; }
-    public string? CreatedBy { get; protected set; }
-    public string? UpdatedBy { get; protected set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
 
     protected void SetUpdated(string? updatedBy = null)
     {

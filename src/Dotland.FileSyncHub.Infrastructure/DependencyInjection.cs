@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentVersionRepository, DocumentVersionRepository>();
+        services.AddScoped<IVersioningConfigurationRepository, VersioningConfigurationRepository>();
 
         return services;
     }

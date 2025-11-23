@@ -2,9 +2,11 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Dotland.FileSyncHub.Application.Versioning;
 using Dotland.FileSyncHub.Web.Configuration;
 using Dotland.FileSyncHub.Web.Models;
 using Microsoft.Extensions.Options;
+using DomainCategory = Dotland.FileSyncHub.Domain.Enums.DocumentCategory;
 
 namespace Dotland.FileSyncHub.Web.Services;
 
@@ -18,6 +20,10 @@ namespace Dotland.FileSyncHub.Web.Services;
 /// │   │   └── {year}/{category}/{document_id}_{version}_{filename}
 /// └── system/
 ///     └── (system files)
+///
+/// Versioning Configuration:
+/// - First checks database configuration (IVersioningService)
+/// - Falls back to appsettings.json configuration if no DB config exists
 /// </summary>
 public class S3StorageService : IS3StorageService
 {
@@ -26,15 +32,18 @@ public class S3StorageService : IS3StorageService
 
     private readonly IAmazonS3 _s3Client;
     private readonly S3Settings _settings;
+    private readonly IVersioningService _versioningService;
     private readonly ILogger<S3StorageService> _logger;
 
     public S3StorageService(
         IAmazonS3 s3Client,
         IOptions<S3Settings> settings,
+        IVersioningService versioningService,
         ILogger<S3StorageService> logger)
     {
         _s3Client = s3Client;
         _settings = settings.Value;
+        _versioningService = versioningService;
         _logger = logger;
     }
 
@@ -76,9 +85,8 @@ public class S3StorageService : IS3StorageService
             // Validate file
             ValidateFile(filename, fileBytes.Length);
 
-            // Get versioning config
-            var orgConfig = _settings.GetOrganizationConfig(organizationId);
-            var versioningEnabled = orgConfig.IsVersioningEnabled(category);
+            // Get versioning config (database first, then fallback to appsettings)
+            var (versioningEnabled, maxVersions) = await GetVersioningConfigAsync(organizationId, category, cancellationToken);
 
             // Determine version number
             var version = 1;
@@ -141,13 +149,9 @@ public class S3StorageService : IS3StorageService
                 s3Key, version, versioningEnabled);
 
             // Clean up old versions if max versions is set
-            if (versioningEnabled && !isNewDocument)
+            if (versioningEnabled && !isNewDocument && maxVersions > 0)
             {
-                var maxVersions = orgConfig.GetMaxVersions(category);
-                if (maxVersions > 0)
-                {
-                    await CleanupOldVersionsAsync(organizationId, category, documentId!, maxVersions, cancellationToken);
-                }
+                await CleanupOldVersionsAsync(organizationId, category, documentId!, maxVersions, cancellationToken);
             }
 
             return new UploadResult
@@ -378,11 +382,63 @@ public class S3StorageService : IS3StorageService
 
     /// <summary>
     /// Check if versioning is enabled for a category in an organization.
+    /// Uses database configuration first, then falls back to appsettings.
     /// </summary>
-    public bool IsVersioningEnabled(string organizationId, DocumentCategory category)
+    public async Task<bool> IsVersioningEnabledAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default)
     {
+        var (enabled, _) = await GetVersioningConfigAsync(organizationId, category, cancellationToken);
+        return enabled;
+    }
+
+    /// <summary>
+    /// Get versioning configuration from database first, fallback to appsettings.
+    /// </summary>
+    private async Task<(bool VersioningEnabled, int MaxVersions)> GetVersioningConfigAsync(
+        string organizationId,
+        DocumentCategory category,
+        CancellationToken cancellationToken)
+    {
+        // Convert Web category to Domain category
+        var domainCategory = MapToDomainCategory(category);
+
+        // Try database configuration first
+        var dbConfig = await _versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
+
+        if (dbConfig != null)
+        {
+            var categoryConfig = dbConfig.CategoryConfigurations
+                .FirstOrDefault(c => c.Category == domainCategory);
+
+            if (categoryConfig != null)
+            {
+                return (categoryConfig.VersioningEnabled, categoryConfig.MaxVersions);
+            }
+
+            return (dbConfig.DefaultVersioningEnabled, dbConfig.DefaultMaxVersions);
+        }
+
+        // Fallback to appsettings configuration
         var orgConfig = _settings.GetOrganizationConfig(organizationId);
-        return orgConfig.IsVersioningEnabled(category);
+        return (orgConfig.IsVersioningEnabled(category), orgConfig.GetMaxVersions(category));
+    }
+
+    /// <summary>
+    /// Map Web DocumentCategory to Domain DocumentCategory.
+    /// </summary>
+    private static DomainCategory MapToDomainCategory(DocumentCategory category)
+    {
+        return category switch
+        {
+            DocumentCategory.Invoices => DomainCategory.Invoices,
+            DocumentCategory.Contracts => DomainCategory.Contracts,
+            DocumentCategory.Reports => DomainCategory.Reports,
+            DocumentCategory.Legal => DomainCategory.Legal,
+            DocumentCategory.Hr => DomainCategory.HumanResources,
+            DocumentCategory.Financial => DomainCategory.Finance,
+            DocumentCategory.Technical => DomainCategory.Technical,
+            DocumentCategory.Correspondence => DomainCategory.General,
+            _ => DomainCategory.Other
+        };
     }
 
     private async Task<int> GetNextVersionAsync(

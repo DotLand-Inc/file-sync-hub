@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
 
     private IDocumentRepository? _documents;
     private IDocumentVersionRepository? _documentVersions;
+    private IVersioningConfigurationRepository? _versioningConfigurations;
 
     public UnitOfWork(FileSyncHubDbContext context)
     {
@@ -22,6 +23,7 @@ public class UnitOfWork : IUnitOfWork
 
     public IDocumentRepository Documents => _documents ??= new DocumentRepository(_context);
     public IDocumentVersionRepository DocumentVersions => _documentVersions ??= new DocumentVersionRepository(_context);
+    public IVersioningConfigurationRepository VersioningConfigurations => _versioningConfigurations ??= new VersioningConfigurationRepository(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
