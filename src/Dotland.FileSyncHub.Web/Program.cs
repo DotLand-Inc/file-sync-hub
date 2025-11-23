@@ -1,5 +1,7 @@
 using Amazon;
 using Amazon.S3;
+using Dotland.FileSyncHub.Application;
+using Dotland.FileSyncHub.Infrastructure;
 using Dotland.FileSyncHub.Web.Configuration;
 using Dotland.FileSyncHub.Web.Services;
 
@@ -8,6 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuration - Environment variables override appsettings.json
 // Use S3__BucketName, S3__Region, S3__ServiceUrl format for env vars
 builder.Services.Configure<S3Settings>(builder.Configuration.GetSection(S3Settings.SectionName));
+
+// Clean Architecture layers
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // AWS S3
 var s3Settings = builder.Configuration.GetSection(S3Settings.SectionName).Get<S3Settings>() ?? new S3Settings();

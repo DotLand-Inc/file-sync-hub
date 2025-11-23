@@ -9,16 +9,10 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
-public class DocumentsController : ControllerBase
+public class DocumentsController(IS3StorageService storageService, ILogger<DocumentsController> logger)
+    : ControllerBase
 {
-    private readonly S3StorageService _storageService;
-    private readonly ILogger<DocumentsController> _logger;
-
-    public DocumentsController(IS3StorageService storageService, ILogger<DocumentsController> logger)
-    {
-        _storageService = (S3StorageService)storageService;
-        _logger = logger;
-    }
+    private readonly S3StorageService _storageService = (S3StorageService)storageService;
 
     /// <summary>
     /// Upload a new document to S3.
@@ -74,7 +68,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Upload failed for file: {Filename}", file.FileName);
+            logger.LogError(ex, "Upload failed for file: {Filename}", file.FileName);
             return StatusCode(500, new { error = "Upload failed" });
         }
     }
@@ -141,7 +135,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
+            logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
             return StatusCode(500, new { error = "Upload failed" });
         }
     }
@@ -261,7 +255,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
+            logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
             return StatusCode(500, new { error = "Delete failed" });
         }
     }

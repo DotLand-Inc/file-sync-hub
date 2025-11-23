@@ -4,4 +4,12 @@
     <LangVersion>default</LangVersion>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dotland.FileSyncHub.Domain\Dotland.FileSyncHub.Domain.csproj" />
+  </ItemGroup>
 </Project>
