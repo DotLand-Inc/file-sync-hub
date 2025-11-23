@@ -1,8 +1,8 @@
-using GedBackend.Models;
-using GedBackend.Services;
+using Dotland.FileSyncHub.Web.Models;
+using Dotland.FileSyncHub.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GedBackend.Controllers;
+namespace Dotland.FileSyncHub.Web.Controllers;
 
 /// <summary>
 /// API controller for document management operations.

@@ -1,4 +1,4 @@
-namespace GedBackend.Models;
+namespace Dotland.FileSyncHub.Web.Models;
 
 /// <summary>
 /// Document category for organization in S3.

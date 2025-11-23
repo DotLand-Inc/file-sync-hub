@@ -1,4 +1,4 @@
-namespace GedBackend.Models;
+namespace Dotland.FileSyncHub.Web.Models;
 
 /// <summary>
 /// Result of a file upload operation.

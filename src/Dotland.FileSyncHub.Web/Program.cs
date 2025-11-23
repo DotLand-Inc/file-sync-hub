@@ -1,7 +1,7 @@
 using Amazon;
 using Amazon.S3;
-using GedBackend.Configuration;
-using GedBackend.Services;
+using Dotland.FileSyncHub.Web.Configuration;
+using Dotland.FileSyncHub.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

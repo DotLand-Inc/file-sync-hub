@@ -1,6 +1,6 @@
-using GedBackend.Models;
+using Dotland.FileSyncHub.Web.Models;
 
-namespace GedBackend.Configuration;
+namespace Dotland.FileSyncHub.Web.Configuration;
 
 /// <summary>
 /// Configuration settings for AWS S3 storage.

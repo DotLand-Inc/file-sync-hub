@@ -1,4 +1,4 @@
-namespace GedBackend.Models;
+namespace Dotland.FileSyncHub.Web.Models;
 
 /// <summary>
 /// Information about a file stored in S3.

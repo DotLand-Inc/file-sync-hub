@@ -1,4 +1,4 @@
-namespace GedBackend.Models;
+namespace Dotland.FileSyncHub.Web.Models;
 
 /// <summary>
 /// Versioning configuration for a specific category within an organization.

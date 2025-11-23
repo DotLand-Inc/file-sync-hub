@@ -54,10 +54,10 @@ cd ged-backend
 dotnet restore
 
 # Run the development server
-dotnet run
+dotnet run --project src/Dotland.FileSyncHub.Web
 
 # Or with hot reload
-dotnet watch run
+dotnet watch --project src/Dotland.FileSyncHub.Web
 ```
 
 ## API Documentation

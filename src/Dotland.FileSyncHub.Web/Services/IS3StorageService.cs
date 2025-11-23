@@ -1,6 +1,6 @@
-using GedBackend.Models;
+using Dotland.FileSyncHub.Web.Models;
 
-namespace GedBackend.Services;
+namespace Dotland.FileSyncHub.Web.Services;
 
 /// <summary>
 /// Interface for S3 storage operations.

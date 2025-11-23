@@ -13,14 +13,17 @@ FileSyncHub is a modular platform that provides:
 
 ```
 file-sync-hub/
-├── ged-backend/          # .NET GED Backend API
-│   ├── Controllers/      # API controllers
-│   ├── Services/         # Business logic services
-│   ├── Models/           # Domain models
-│   ├── Configuration/    # Settings classes
-│   └── GedBackend.csproj
-├── docs/                 # Project documentation
-│   └── ged-backend/      # GED Backend specific docs
+├── ged-backend/
+│   ├── Dotland.FileSyncHub.sln          # Solution file
+│   └── src/
+│       └── Dotland.FileSyncHub.Web/     # Web API project
+│           ├── Controllers/
+│           ├── Services/
+│           ├── Models/
+│           ├── Configuration/
+│           └── Dotland.FileSyncHub.Web.csproj
+├── docs/
+│   └── ged-backend/
 └── README.md
 ```
 
@@ -44,13 +47,14 @@ cd ged-backend
 # Restore dependencies
 dotnet restore
 
-# Configure S3 settings in appsettings.Development.json
+# Configure S3 settings
+# Edit src/Dotland.FileSyncHub.Web/appsettings.Development.json
 
 # Run the server
-dotnet run
+dotnet run --project src/Dotland.FileSyncHub.Web
 
 # Or with hot reload
-dotnet watch run
+dotnet watch --project src/Dotland.FileSyncHub.Web
 ```
 
 The API will be available at `http://localhost:5000`

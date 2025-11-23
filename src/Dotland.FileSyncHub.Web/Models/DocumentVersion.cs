@@ -1,4 +1,4 @@
-namespace GedBackend.Models;
+namespace Dotland.FileSyncHub.Web.Models;
 
 /// <summary>
 /// Represents a version of a document.

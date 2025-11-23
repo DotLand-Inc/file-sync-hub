@@ -2,11 +2,11 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Amazon.S3;
 using Amazon.S3.Model;
-using GedBackend.Configuration;
-using GedBackend.Models;
+using Dotland.FileSyncHub.Web.Configuration;
+using Dotland.FileSyncHub.Web.Models;
 using Microsoft.Extensions.Options;
 
-namespace GedBackend.Services;
+namespace Dotland.FileSyncHub.Web.Services;
 
 /// <summary>
 /// Service for managing file storage in AWS S3.
