@@ -1,0 +1,6 @@
+@GedBackend_HostAddress = http://localhost:5083
+
+GET {{GedBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
