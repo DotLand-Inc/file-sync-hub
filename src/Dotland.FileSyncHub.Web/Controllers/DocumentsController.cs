@@ -1,6 +1,14 @@
-using Dotland.FileSyncHub.Web.Models;
-using Dotland.FileSyncHub.Web.Services;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Dotland.FileSyncHub.Application.Common.Models;
+using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
 
@@ -12,7 +20,7 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 public class DocumentsController(IS3StorageService storageService, ILogger<DocumentsController> logger)
     : ControllerBase
 {
-    private readonly S3StorageService _storageService = (S3StorageService)storageService;
+    private readonly IS3StorageService _storageService = storageService;
 
     /// <summary>
     /// Upload a new document to S3.
@@ -98,7 +106,7 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
         }
 
         // Check if versioning is enabled for this category
-        if (!_storageService.IsVersioningEnabled(organizationId, category))
+        if (!await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken))
         {
             return BadRequest(new { error = $"Versioning is not enabled for category '{category}' in this organization" });
         }
@@ -157,7 +165,7 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
         return Ok(new
         {
             documentId,
-            versioningEnabled = _storageService.IsVersioningEnabled(organizationId, category),
+            versioningEnabled = await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken),
             versions,
             count = versions.Count
         });
@@ -168,9 +176,9 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
     /// </summary>
     [HttpGet("{organizationId}/versioning/{category}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult CheckVersioning(string organizationId, DocumentCategory category)
+    public async Task<IActionResult> CheckVersioning(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default)
     {
-        var enabled = _storageService.IsVersioningEnabled(organizationId, category);
+        var enabled = await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
         return Ok(new { organizationId, category = category.ToString(), versioningEnabled = enabled });
     }
 

@@ -1,6 +1,4 @@
-using System;
-
-namespace Dotland.FileSyncHub.Web.Models;
+namespace Dotland.FileSyncHub.Application.Common.Models;
 
 /// <summary>
 /// Represents a version of a document.

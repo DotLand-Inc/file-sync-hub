@@ -1,22 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Dotland.FileSyncHub.Application.Common.Models;
+using Dotland.FileSyncHub.Application.Common.Services;
 using Dotland.FileSyncHub.Application.Common.Settings;
 using Dotland.FileSyncHub.Application.Versioning;
 using Dotland.FileSyncHub.Domain.Enums;
-using Dotland.FileSyncHub.Web.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DomainCategory = Dotland.FileSyncHub.Domain.Enums.DocumentCategory;
 
-namespace Dotland.FileSyncHub.Web.Services;
+namespace Dotland.FileSyncHub.Infrastructure.ThirdParty.Storage;
 
 /// <summary>
 /// Service for managing file storage in AWS S3.
@@ -33,34 +28,24 @@ namespace Dotland.FileSyncHub.Web.Services;
 /// - First checks database configuration (IVersioningService)
 /// - Falls back to appsettings.json configuration if no DB config exists
 /// </summary>
-public class S3StorageService : IS3StorageService
+public class S3StorageService(
+    IAmazonS3 s3Client,
+    IOptions<S3Settings> settings,
+    IVersioningService versioningService,
+    ILogger<S3StorageService> logger)
+    : IS3StorageService
 {
     private const string OrganizationsPrefix = "organizations";
     private const string SystemPrefix = "system";
 
-    private readonly IAmazonS3 _s3Client;
-    private readonly S3Settings _settings;
-    private readonly IVersioningService _versioningService;
-    private readonly ILogger<S3StorageService> _logger;
-
-    public S3StorageService(
-        IAmazonS3 s3Client,
-        IOptions<S3Settings> settings,
-        IVersioningService versioningService,
-        ILogger<S3StorageService> logger)
-    {
-        _s3Client = s3Client;
-        _settings = settings.Value;
-        _versioningService = versioningService;
-        _logger = logger;
-    }
+    private readonly S3Settings _settings = settings.Value;
 
     /// <inheritdoc />
     public async Task<UploadResult> UploadFileAsync(
         Stream fileStream,
         string filename,
         string organizationId,
-        DocumentCategory category = DocumentCategory.Other,
+        DomainCategory category = DocumentCategory.Other,
         string? contentType = null,
         Dictionary<string, string>? metadata = null,
         CancellationToken cancellationToken = default)
@@ -150,9 +135,9 @@ public class S3StorageService : IS3StorageService
                 request.Metadata.Add(kvp.Key, kvp.Value);
             }
 
-            var response = await _s3Client.PutObjectAsync(request, cancellationToken);
+            var response = await s3Client.PutObjectAsync(request, cancellationToken);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "File uploaded: {S3Key}, Version: {Version}, Versioning: {Versioning}",
                 s3Key, version, versioningEnabled);
 
@@ -177,7 +162,7 @@ public class S3StorageService : IS3StorageService
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "S3 upload failed for file: {Filename}", filename);
+            logger.LogError(ex, "S3 upload failed for file: {Filename}", filename);
             return new UploadResult
             {
                 Success = false,
@@ -187,7 +172,7 @@ public class S3StorageService : IS3StorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Upload failed for file: {Filename}", filename);
+            logger.LogError(ex, "Upload failed for file: {Filename}", filename);
             throw;
         }
     }
@@ -211,7 +196,7 @@ public class S3StorageService : IS3StorageService
         {
             var yearPrefix = $"{OrganizationsPrefix}/{organizationId}/{year}/{category.ToString().ToLowerInvariant()}/{documentId}_";
 
-            var response = await _s3Client.ListObjectsV2Async(new ListObjectsV2Request
+            var response = await s3Client.ListObjectsV2Async(new ListObjectsV2Request
             {
                 BucketName = _settings.BucketName,
                 Prefix = yearPrefix
@@ -252,7 +237,7 @@ public class S3StorageService : IS3StorageService
     {
         try
         {
-            var response = await _s3Client.GetObjectAsync(new GetObjectRequest
+            var response = await s3Client.GetObjectAsync(new GetObjectRequest
             {
                 BucketName = _settings.BucketName,
                 Key = s3Key
@@ -281,18 +266,18 @@ public class S3StorageService : IS3StorageService
     {
         try
         {
-            await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
+            await s3Client.DeleteObjectAsync(new DeleteObjectRequest
             {
                 BucketName = _settings.BucketName,
                 Key = s3Key
             }, cancellationToken);
 
-            _logger.LogInformation("File deleted: {S3Key}", s3Key);
+            logger.LogInformation("File deleted: {S3Key}", s3Key);
             return true;
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete file: {S3Key}", s3Key);
+            logger.LogError(ex, "Failed to delete file: {S3Key}", s3Key);
             throw;
         }
     }
@@ -308,7 +293,7 @@ public class S3StorageService : IS3StorageService
             Verb = forUpload ? HttpVerb.PUT : HttpVerb.GET
         };
 
-        return _s3Client.GetPreSignedURL(request);
+        return s3Client.GetPreSignedURL(request);
     }
 
     /// <inheritdoc />
@@ -316,7 +301,7 @@ public class S3StorageService : IS3StorageService
     {
         try
         {
-            await _s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
+            await s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
             {
                 BucketName = _settings.BucketName,
                 Key = s3Key
@@ -340,7 +325,7 @@ public class S3StorageService : IS3StorageService
         // New structure: organizations/{org}/{year}/{category}/
         var prefix = $"{OrganizationsPrefix}/{organizationId}/";
 
-        var response = await _s3Client.ListObjectsV2Async(new ListObjectsV2Request
+        var response = await s3Client.ListObjectsV2Async(new ListObjectsV2Request
         {
             BucketName = _settings.BucketName,
             Prefix = prefix,
@@ -370,7 +355,7 @@ public class S3StorageService : IS3StorageService
     {
         try
         {
-            await _s3Client.CopyObjectAsync(new CopyObjectRequest
+            await s3Client.CopyObjectAsync(new CopyObjectRequest
             {
                 SourceBucket = _settings.BucketName,
                 SourceKey = sourceKey,
@@ -378,12 +363,12 @@ public class S3StorageService : IS3StorageService
                 DestinationKey = destKey
             }, cancellationToken);
 
-            _logger.LogInformation("File copied from {Source} to {Dest}", sourceKey, destKey);
+            logger.LogInformation("File copied from {Source} to {Dest}", sourceKey, destKey);
             return true;
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "Failed to copy file from {Source} to {Dest}", sourceKey, destKey);
+            logger.LogError(ex, "Failed to copy file from {Source} to {Dest}", sourceKey, destKey);
             throw;
         }
     }
@@ -403,14 +388,14 @@ public class S3StorageService : IS3StorageService
     /// </summary>
     private async Task<(bool VersioningEnabled, int MaxVersions)> GetVersioningConfigAsync(
         string organizationId,
-        DomainCategory category,
+        DocumentCategory category,
         CancellationToken cancellationToken)
     {
         // Convert Web category to Domain category
         var domainCategory = MapToDomainCategory(category);
 
         // Try database configuration first
-        var dbConfig = await _versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
+        var dbConfig = await versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
 
         if (dbConfig != null)
         {
@@ -481,13 +466,13 @@ public class S3StorageService : IS3StorageService
             try
             {
                 await DeleteFileAsync(version.S3Key, cancellationToken);
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Deleted old version {Version} of document {DocumentId}",
                     version.Version, documentId);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to delete old version {Version}", version.Version);
+                logger.LogWarning(ex, "Failed to delete old version {Version}", version.Version);
             }
         }
     }

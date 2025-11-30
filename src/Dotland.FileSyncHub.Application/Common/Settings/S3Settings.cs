@@ -1,6 +1,4 @@
-using Dotland.FileSyncHub.Web.Models;
-
-namespace Dotland.FileSyncHub.Web.Configuration;
+namespace Dotland.FileSyncHub.Application.Common.Settings;
 
 /// <summary>
 /// Configuration settings for AWS S3 storage.
@@ -47,21 +45,21 @@ public class S3Settings
     /// <summary>
     /// Organization-specific versioning configurations.
     /// </summary>
-    public List<OrganizationVersioningConfig> OrganizationVersioning { get; set; } = [];
+    public List<OrganizationVersioningSettings> OrganizationVersioning { get; set; } = [];
 
     /// <summary>
     /// Get versioning config for an organization.
     /// </summary>
-    public OrganizationVersioningConfig GetOrganizationConfig(string organizationId)
+    public OrganizationVersioningSettings GetOrganizationConfig(string organizationId)
     {
         var config = OrganizationVersioning.FirstOrDefault(o =>
             o.OrganizationId.Equals(organizationId, StringComparison.OrdinalIgnoreCase));
-
+    
         if (config != null)
             return config;
-
+    
         // Return default config
-        return new OrganizationVersioningConfig
+        return new OrganizationVersioningSettings
         {
             OrganizationId = organizationId,
             DefaultVersioningEnabled = DefaultVersioning.Enabled,
@@ -70,18 +68,4 @@ public class S3Settings
     }
 }
 
-/// <summary>
-/// Default versioning settings applied when organization-specific config is not found.
-/// </summary>
-public class DefaultVersioningSettings
-{
-    /// <summary>
-    /// Whether versioning is enabled by default.
-    /// </summary>
-    public bool Enabled { get; set; } = false;
 
-    /// <summary>
-    /// Default category versioning configurations.
-    /// </summary>
-    public List<CategoryVersioningConfig> CategoryDefaults { get; set; } = [];
-}

@@ -7,9 +7,20 @@
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dotland.FileSyncHub.Domain\Dotland.FileSyncHub.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.Extensions.Configuration.Abstractions">
+      <HintPath>..\..\..\..\..\home\hamza\.dotnet\packs\Microsoft.AspNetCore.App.Ref\9.0.10\ref\net9.0\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

@@ -1,6 +1,4 @@
-using System;
-
-namespace Dotland.FileSyncHub.Web.Models;
+namespace Dotland.FileSyncHub.Application.Common.Models;
 
 /// <summary>
 /// Information about a file stored in S3.

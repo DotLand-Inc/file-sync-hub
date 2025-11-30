@@ -14,5 +14,6 @@ public enum DocumentCategory
     Finance = 6,
     Technical = 7,
     Marketing = 8,
-    Other = 99
+    Other = 99,
+
 }

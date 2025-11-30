@@ -1,11 +1,7 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Domain.Enums;
-using Dotland.FileSyncHub.Web.Models;
 
-namespace Dotland.FileSyncHub.Web.Services;
+namespace Dotland.FileSyncHub.Application.Common.Services;
 
 /// <summary>
 /// Interface for S3 storage operations.

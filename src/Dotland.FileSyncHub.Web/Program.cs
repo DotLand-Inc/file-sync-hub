@@ -1,9 +1,9 @@
-using Amazon;
-using Amazon.S3;
 using Dotland.FileSyncHub.Application;
+using Dotland.FileSyncHub.Application.Common.Settings;
 using Dotland.FileSyncHub.Infrastructure;
-using Dotland.FileSyncHub.Web.Configuration;
-using Dotland.FileSyncHub.Web.Services;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,35 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<S3Settings>(builder.Configuration.GetSection(S3Settings.SectionName));
 
 // Clean Architecture layers
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-
-// AWS S3
-var s3Settings = builder.Configuration.GetSection(S3Settings.SectionName).Get<S3Settings>() ?? new S3Settings();
-
-builder.Services.AddSingleton<IAmazonS3>(sp =>
-{
-    var config = new AmazonS3Config
-    {
-        RegionEndpoint = RegionEndpoint.GetBySystemName(s3Settings.Region)
-    };
-
-    // Support for LocalStack or S3-compatible services
-    if (!string.IsNullOrEmpty(s3Settings.ServiceUrl))
-    {
-        config.ServiceURL = s3Settings.ServiceUrl;
-        config.ForcePathStyle = true;
-    }
-
-    // AWS SDK automatically reads credentials from:
-    // 1. Environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-    // 2. AWS credentials file: ~/.aws/credentials
-    // 3. IAM roles (EC2/ECS/Lambda)
-    return new AmazonS3Client(config);
-});
-
-// Services
-builder.Services.AddScoped<IS3StorageService, S3StorageService>();
+builder.Services.AddWebServices(builder.Configuration);
 
 // Controllers
 builder.Services.AddControllers();

@@ -11,7 +11,7 @@ public abstract class Entity
     public string? CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
 
-    protected void SetUpdated(string? updatedBy = null)
+    public void SetUpdated(string? updatedBy = null)
     {
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;

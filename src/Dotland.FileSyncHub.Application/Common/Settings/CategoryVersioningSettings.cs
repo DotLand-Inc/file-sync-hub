@@ -1,11 +1,11 @@
 using Dotland.FileSyncHub.Domain.Enums;
 
-namespace Dotland.FileSyncHub.Web.Models;
+namespace Dotland.FileSyncHub.Application.Common.Settings;
 
 /// <summary>
 /// Versioning configuration for a specific category within an organization.
 /// </summary>
-public class CategoryVersioningConfig
+public class CategoryVersioningSettings
 {
     /// <summary>
     /// Document category.
@@ -22,5 +22,3 @@ public class CategoryVersioningConfig
     /// </summary>
     public int MaxVersions { get; set; } = 0;
 }
-
-

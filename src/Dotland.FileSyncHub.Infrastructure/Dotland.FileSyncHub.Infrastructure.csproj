@@ -6,12 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dotland.FileSyncHub.Domain\Dotland.FileSyncHub.Domain.csproj" />
+    <ProjectReference Include="..\Dotland.FileSyncHub.Application\Dotland.FileSyncHub.Application.csproj" />
   </ItemGroup>
 </Project>
