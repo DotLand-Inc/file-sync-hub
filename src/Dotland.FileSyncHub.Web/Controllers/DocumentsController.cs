@@ -1,7 +1,7 @@
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Common.Services;
-using Dotland.FileSyncHub.Application.Documents.Commands.UploadDocument;
 using Dotland.FileSyncHub.Domain.Enums;
+using Dotland.FileSyncHub.Web.Models.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,57 +14,23 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
-public class DocumentsController : ControllerBase
+public class DocumentsController(
+    IS3StorageService storageService,
+    IMediator mediator,
+    ILogger<DocumentsController> logger)
+    : ControllerBase
 {
-    private readonly IS3StorageService _storageService;
-    private readonly IMediator _mediator;
-    private readonly ILogger<DocumentsController> _logger;
-
-    public DocumentsController(
-        IS3StorageService storageService,
-        IMediator mediator,
-        ILogger<DocumentsController> logger)
-    {
-        _storageService = storageService;
-        _mediator = mediator;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Upload a new document to S3.
     /// </summary>
     [HttpPost("upload")]
     [ProducesResponseType(typeof(UploadResult), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Upload(
-        IFormFile file,
-        [FromForm] string organizationId,
-        [FromForm] DocumentCategory category = DocumentCategory.Other,
-        [FromForm] string? description = null,
-        CancellationToken cancellationToken = default)
+    public async Task<IActionResult> UploadAsync(
+        [FromForm] UploadDocumentRequest request, CancellationToken cancellationToken)
     {
-        // Read file content into byte array
-        byte[] fileContent = Array.Empty<byte>();
-        if (file != null && file.Length > 0)
-        {
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream, cancellationToken);
-            fileContent = memoryStream.ToArray();
-        }
-
-        // Create and send command
-        // Validation is handled automatically by ValidationBehaviour
-        var command = new UploadDocumentCommand
-        {
-            FileContent = fileContent,
-            FileName = file?.FileName ?? string.Empty,
-            OrganizationId = organizationId ?? string.Empty,
-            Category = category,
-            ContentType = file?.ContentType,
-            Description = description
-        };
-
-        var result = await _mediator.Send(command, cancellationToken);
+        var command = await request.ToCommandAsync(cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
 
         return CreatedAtAction(nameof(GetDownloadUrl), new { s3Key = result.S3Key }, result);
     }
@@ -94,7 +60,7 @@ public class DocumentsController : ControllerBase
         }
 
         // Check if versioning is enabled for this category
-        if (!await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken))
+        if (!await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken))
         {
             return BadRequest(new { error = $"Versioning is not enabled for category '{category}' in this organization" });
         }
@@ -108,7 +74,7 @@ public class DocumentsController : ControllerBase
             }
 
             using var stream = file.OpenReadStream();
-            var result = await _storageService.UploadFileAsync(
+            var result = await storageService.UploadFileAsync(
                 stream,
                 file.FileName,
                 organizationId,
@@ -131,7 +97,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
+            logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
             return StatusCode(500, new { error = "Upload failed" });
         }
     }
@@ -147,13 +113,13 @@ public class DocumentsController : ControllerBase
         [FromQuery] DocumentCategory category,
         CancellationToken cancellationToken = default)
     {
-        var versions = await _storageService.GetDocumentVersionsAsync(
+        var versions = await storageService.GetDocumentVersionsAsync(
             organizationId, category, documentId, cancellationToken);
 
         return Ok(new
         {
             documentId,
-            versioningEnabled = await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken),
+            versioningEnabled = await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken),
             versions,
             count = versions.Count
         });
@@ -166,7 +132,7 @@ public class DocumentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckVersioning(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default)
     {
-        var enabled = await _storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
+        var enabled = await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
         return Ok(new { organizationId, category = category.ToString(), versioningEnabled = enabled });
     }
 
@@ -186,13 +152,13 @@ public class DocumentsController : ControllerBase
             return BadRequest(new { error = "S3 key is required" });
         }
 
-        var exists = await _storageService.FileExistsAsync(s3Key, cancellationToken);
+        var exists = await storageService.FileExistsAsync(s3Key, cancellationToken);
         if (!exists)
         {
             return NotFound(new { error = "File not found" });
         }
 
-        var url = _storageService.GeneratePresignedUrl(s3Key, expirationMinutes);
+        var url = storageService.GeneratePresignedUrl(s3Key, expirationMinutes);
         return Ok(new { downloadUrl = url, expiresInMinutes = expirationMinutes });
     }
 
@@ -213,7 +179,7 @@ public class DocumentsController : ControllerBase
 
         try
         {
-            var (content, metadata) = await _storageService.DownloadFileAsync(s3Key, cancellationToken);
+            var (content, metadata) = await storageService.DownloadFileAsync(s3Key, cancellationToken);
 
             var filename = metadata.TryGetValue("x-amz-meta-original-filename", out var fn)
                 ? fn
@@ -246,12 +212,12 @@ public class DocumentsController : ControllerBase
 
         try
         {
-            await _storageService.DeleteFileAsync(s3Key, cancellationToken);
+            await storageService.DeleteFileAsync(s3Key, cancellationToken);
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
+            logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
             return StatusCode(500, new { error = "Delete failed" });
         }
     }
@@ -266,7 +232,7 @@ public class DocumentsController : ControllerBase
         [FromQuery] DocumentCategory? category = null,
         CancellationToken cancellationToken = default)
     {
-        var files = await _storageService.ListFilesAsync(organizationId, category, cancellationToken: cancellationToken);
+        var files = await storageService.ListFilesAsync(organizationId, category, cancellationToken: cancellationToken);
         return Ok(new { files, count = files.Count });
     }
 }
