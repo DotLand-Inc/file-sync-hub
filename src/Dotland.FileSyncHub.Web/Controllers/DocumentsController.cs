@@ -26,7 +26,7 @@ public class DocumentsController(
     [HttpPost("upload")]
     [ProducesResponseType(typeof(UploadResult), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UploadAsync(
+    public async Task<IActionResult> PostAsync(
         [FromForm] UploadDocumentRequest request, CancellationToken cancellationToken)
     {
         var command = await request.ToCommandAsync(cancellationToken);
@@ -38,68 +38,23 @@ public class DocumentsController(
     /// <summary>
     /// Upload a new version of an existing document.
     /// </summary>
-    [HttpPost("upload/version")]
-    [ProducesResponseType(typeof(UploadResult), StatusCodes.Status201Created)]
+    [HttpPut("upload/version")]
+    [ProducesResponseType(typeof(UploadResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UploadNewVersion(
-        IFormFile file,
-        [FromForm] string organizationId,
-        [FromForm] string documentId,
-        [FromForm] DocumentCategory category,
-        [FromForm] string? description = null,
+    public async Task<IActionResult> PutAsync(
+        [FromForm] UploadDocumentVersionRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (file == null || file.Length == 0)
-        {
-            return BadRequest(new { error = "No file provided" });
-        }
-
-        if (string.IsNullOrWhiteSpace(organizationId) || string.IsNullOrWhiteSpace(documentId))
-        {
-            return BadRequest(new { error = "Organization ID and Document ID are required" });
-        }
-
         // Check if versioning is enabled for this category
-        if (!await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken))
+        if (!await storageService.IsVersioningEnabledAsync(request.OrganizationId, request.Category, cancellationToken))
         {
-            return BadRequest(new { error = $"Versioning is not enabled for category '{category}' in this organization" });
+            return BadRequest(new { error = $"Versioning is not enabled for category '{request.Category}' in this organization" });
         }
 
-        try
-        {
-            var metadata = new Dictionary<string, string>();
-            if (!string.IsNullOrWhiteSpace(description))
-            {
-                metadata["description"] = description;
-            }
+        var command = await request.ToCommandAsync(cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
 
-            using var stream = file.OpenReadStream();
-            var result = await storageService.UploadFileAsync(
-                stream,
-                file.FileName,
-                organizationId,
-                category,
-                documentId,
-                file.ContentType,
-                metadata,
-                cancellationToken);
-
-            if (!result.Success)
-            {
-                return BadRequest(new { error = result.ErrorMessage });
-            }
-
-            return CreatedAtAction(nameof(GetDownloadUrl), new { s3Key = result.S3Key }, result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
-            return StatusCode(500, new { error = "Upload failed" });
-        }
+        return Ok(result);
     }
 
     /// <summary>
