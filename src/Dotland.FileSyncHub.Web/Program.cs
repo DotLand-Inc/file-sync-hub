@@ -1,6 +1,7 @@
 using Dotland.FileSyncHub.Application;
 using Dotland.FileSyncHub.Application.Common.Settings;
 using Dotland.FileSyncHub.Infrastructure;
+using Dotland.FileSyncHub.Web.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,10 @@ builder.Services.Configure<S3Settings>(builder.Configuration.GetSection(S3Settin
 
 // Clean Architecture layers
 builder.Services.AddWebServices(builder.Configuration);
+
+// Exception Handling
+builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Controllers
 builder.Services.AddControllers();
@@ -35,6 +40,8 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+app.UseExceptionHandler();
+
 // if (app.Environment.IsDevelopment())
 // {
 //     app.MapOpenApi();

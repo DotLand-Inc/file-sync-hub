@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Application.Documents.Commands.UploadDocument;
 using Dotland.FileSyncHub.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,10 +14,21 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
-public class DocumentsController(IS3StorageService storageService, ILogger<DocumentsController> logger)
-    : ControllerBase
+public class DocumentsController : ControllerBase
 {
-    private readonly IS3StorageService _storageService = storageService;
+    private readonly IS3StorageService _storageService;
+    private readonly IMediator _mediator;
+    private readonly ILogger<DocumentsController> _logger;
+
+    public DocumentsController(
+        IS3StorageService storageService,
+        IMediator mediator,
+        ILogger<DocumentsController> logger)
+    {
+        _storageService = storageService;
+        _mediator = mediator;
+        _logger = logger;
+    }
 
     /// <summary>
     /// Upload a new document to S3.
@@ -35,50 +43,30 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
         [FromForm] string? description = null,
         CancellationToken cancellationToken = default)
     {
-        if (file == null || file.Length == 0)
+        // Read file content into byte array
+        byte[] fileContent = Array.Empty<byte>();
+        if (file != null && file.Length > 0)
         {
-            return BadRequest(new { error = "No file provided" });
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream, cancellationToken);
+            fileContent = memoryStream.ToArray();
         }
 
-        if (string.IsNullOrWhiteSpace(organizationId))
+        // Create and send command
+        // Validation is handled automatically by ValidationBehaviour
+        var command = new UploadDocumentCommand
         {
-            return BadRequest(new { error = "Organization ID is required" });
-        }
+            FileContent = fileContent,
+            FileName = file?.FileName ?? string.Empty,
+            OrganizationId = organizationId ?? string.Empty,
+            Category = category,
+            ContentType = file?.ContentType,
+            Description = description
+        };
 
-        try
-        {
-            var metadata = new Dictionary<string, string>();
-            if (!string.IsNullOrWhiteSpace(description))
-            {
-                metadata["description"] = description;
-            }
+        var result = await _mediator.Send(command, cancellationToken);
 
-            using var stream = file.OpenReadStream();
-            var result = await _storageService.UploadFileAsync(
-                stream,
-                file.FileName,
-                organizationId,
-                category,
-                file.ContentType,
-                metadata,
-                cancellationToken);
-
-            if (!result.Success)
-            {
-                return BadRequest(new { error = result.ErrorMessage });
-            }
-
-            return CreatedAtAction(nameof(GetDownloadUrl), new { s3Key = result.S3Key }, result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Upload failed for file: {Filename}", file.FileName);
-            return StatusCode(500, new { error = "Upload failed" });
-        }
+        return CreatedAtAction(nameof(GetDownloadUrl), new { s3Key = result.S3Key }, result);
     }
 
     /// <summary>
@@ -143,7 +131,7 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
+            _logger.LogError(ex, "Version upload failed for document: {DocumentId}", documentId);
             return StatusCode(500, new { error = "Upload failed" });
         }
     }
@@ -263,7 +251,7 @@ public class DocumentsController(IS3StorageService storageService, ILogger<Docum
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
+            _logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
             return StatusCode(500, new { error = "Delete failed" });
         }
     }
