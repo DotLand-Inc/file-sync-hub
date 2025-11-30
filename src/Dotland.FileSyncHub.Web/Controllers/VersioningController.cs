@@ -14,22 +14,15 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/versioning")]
-public class VersioningController : ControllerBase
+public class VersioningController(IVersioningService versioningService) : ControllerBase
 {
-    private readonly IVersioningService _versioningService;
-
-    public VersioningController(IVersioningService versioningService)
-    {
-        _versioningService = versioningService;
-    }
-
     /// <summary>
     /// Get all versioning configurations
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<OrganizationVersioningConfigurationDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var configs = await _versioningService.GetAllConfigurationsAsync(cancellationToken);
+        var configs = await versioningService.GetAllConfigurationsAsync(cancellationToken);
         return Ok(configs);
     }
 
@@ -39,7 +32,7 @@ public class VersioningController : ControllerBase
     [HttpGet("{organizationId}")]
     public async Task<ActionResult<OrganizationVersioningConfigurationDto>> GetByOrganization(string organizationId, CancellationToken cancellationToken)
     {
-        var config = await _versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
+        var config = await versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
 
         if (config == null)
             return NotFound($"No versioning configuration found for organization {organizationId}");
@@ -55,7 +48,7 @@ public class VersioningController : ControllerBase
     {
         try
         {
-            var config = await _versioningService.CreateOrganizationConfigurationAsync(dto, null, cancellationToken);
+            var config = await versioningService.CreateOrganizationConfigurationAsync(dto, null, cancellationToken);
             return CreatedAtAction(nameof(GetByOrganization), new { organizationId = config.OrganizationId }, config);
         }
         catch (InvalidOperationException ex)
@@ -72,7 +65,7 @@ public class VersioningController : ControllerBase
     {
         try
         {
-            var config = await _versioningService.UpdateOrganizationConfigurationAsync(organizationId, dto, null, cancellationToken);
+            var config = await versioningService.UpdateOrganizationConfigurationAsync(organizationId, dto, null, cancellationToken);
             return Ok(config);
         }
         catch (InvalidOperationException ex)
@@ -89,7 +82,7 @@ public class VersioningController : ControllerBase
     {
         try
         {
-            await _versioningService.SetCategoryConfigurationAsync(organizationId, dto, null, cancellationToken);
+            await versioningService.SetCategoryConfigurationAsync(organizationId, dto, null, cancellationToken);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -106,7 +99,7 @@ public class VersioningController : ControllerBase
     {
         try
         {
-            await _versioningService.RemoveCategoryConfigurationAsync(organizationId, category, null, cancellationToken);
+            await versioningService.RemoveCategoryConfigurationAsync(organizationId, category, null, cancellationToken);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -121,7 +114,7 @@ public class VersioningController : ControllerBase
     [HttpGet("{organizationId}/categories/{category}/enabled")]
     public async Task<ActionResult<bool>> IsVersioningEnabled(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
     {
-        var isEnabled = await _versioningService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
+        var isEnabled = await versioningService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
         return Ok(new { isEnabled });
     }
 
@@ -131,7 +124,7 @@ public class VersioningController : ControllerBase
     [HttpGet("{organizationId}/categories/{category}/max-versions")]
     public async Task<ActionResult<int>> GetMaxVersions(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
     {
-        var maxVersions = await _versioningService.GetMaxVersionsAsync(organizationId, category, cancellationToken);
+        var maxVersions = await versioningService.GetMaxVersionsAsync(organizationId, category, cancellationToken);
         return Ok(new { maxVersions });
     }
 
@@ -143,7 +136,7 @@ public class VersioningController : ControllerBase
     {
         try
         {
-            await _versioningService.DeleteOrganizationConfigurationAsync(organizationId, cancellationToken);
+            await versioningService.DeleteOrganizationConfigurationAsync(organizationId, cancellationToken);
             return NoContent();
         }
         catch (InvalidOperationException ex)

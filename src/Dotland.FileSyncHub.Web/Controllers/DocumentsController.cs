@@ -1,17 +1,17 @@
-using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Common.Models;
-using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Application.Documents.Commands.DeleteDocument;
+using Dotland.FileSyncHub.Application.Documents.Queries.DocumentDirectDownload;
+using Dotland.FileSyncHub.Application.Documents.Queries.GetDocumentsList;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetDocumentVersions;
+using Dotland.FileSyncHub.Application.Documents.Queries.GetDownloadUrl;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetVersioningStatus;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Models.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
 
@@ -20,11 +20,7 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
-public class DocumentsController(
-    IS3StorageService storageService,
-    IMediator mediator,
-    ILogger<DocumentsController> logger)
-    : ControllerBase
+public class DocumentsController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Upload a new document to S3.
@@ -38,7 +34,7 @@ public class DocumentsController(
         var command = await request.ToCommandAsync(cancellationToken);
         var result = await mediator.Send(command, cancellationToken);
 
-        return CreatedAtAction(nameof(GetDownloadUrl), new { s3Key = result.S3Key }, result);
+        return CreatedAtAction(nameof(GetDownloadUrlAsync), new { s3Key = result.S3Key }, result);
     }
 
     /// <summary>
@@ -119,26 +115,22 @@ public class DocumentsController(
     /// Get a presigned download URL for a document.
     /// </summary>
     [HttpGet("download")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GetDownloadUrlResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetDownloadUrl(
+    public async Task<IActionResult> GetDownloadUrlAsync(
         [FromQuery] string s3Key,
         [FromQuery] int expirationMinutes = 60,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(s3Key))
+        var query = new GetDownloadUrlQuery
         {
-            return BadRequest(new { error = "S3 key is required" });
-        }
+            S3Key = s3Key,
+            ExpirationMinutes = expirationMinutes
+        };
 
-        var exists = await storageService.FileExistsAsync(s3Key, cancellationToken);
-        if (!exists)
-        {
-            return NotFound(new { error = "File not found" });
-        }
+        var result = await mediator.Send(query, cancellationToken);
 
-        var url = storageService.GeneratePresignedUrl(s3Key, expirationMinutes);
-        return Ok(new { downloadUrl = url, expiresInMinutes = expirationMinutes });
+        return Ok(result);
     }
 
     /// <summary>
@@ -147,31 +139,18 @@ public class DocumentsController(
     [HttpGet("download/direct")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DownloadDirect(
+    public async Task<IActionResult> DocumentDirectDownloadAsync(
         [FromQuery] string s3Key,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(s3Key))
+        var query = new DocumentDirectDownloadQuery
         {
-            return BadRequest(new { error = "S3 key is required" });
-        }
+            S3Key = s3Key
+        };
 
-        try
-        {
-            var (content, metadata) = await storageService.DownloadFileAsync(s3Key, cancellationToken);
+        var result = await mediator.Send(query, cancellationToken);
 
-            var filename = metadata.TryGetValue("x-amz-meta-original-filename", out var fn)
-                ? fn
-                : Path.GetFileName(s3Key);
-
-            var contentType = "application/octet-stream";
-
-            return File(content, contentType, filename);
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound(new { error = "File not found" });
-        }
+        return File(result.Content, result.ContentType, result.FileName);
     }
 
     /// <summary>
@@ -179,39 +158,39 @@ public class DocumentsController(
     /// </summary>
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Delete(
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteDocumentAsync(
         [FromQuery] string s3Key,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(s3Key))
+        var command = new DeleteDocumentCommand
         {
-            return BadRequest(new { error = "S3 key is required" });
-        }
+            S3Key = s3Key
+        };
 
-        try
-        {
-            await storageService.DeleteFileAsync(s3Key, cancellationToken);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Delete failed for key: {S3Key}", s3Key);
-            return StatusCode(500, new { error = "Delete failed" });
-        }
+        await mediator.Send(command, cancellationToken);
+
+        return NoContent();
     }
 
     /// <summary>
     /// List documents for an organization.
     /// </summary>
     [HttpGet("{organizationId}/list")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List(
+    [ProducesResponseType(typeof(GetDocumentsListResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDocumentsListAsync(
         string organizationId,
         [FromQuery] DocumentCategory? category = null,
         CancellationToken cancellationToken = default)
     {
-        var files = await storageService.ListFilesAsync(organizationId, category, cancellationToken: cancellationToken);
-        return Ok(new { files, count = files.Count });
+        var query = new GetDocumentsListQuery
+        {
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        var result = await mediator.Send(query, cancellationToken);
+
+        return Ok(result);
     }
 }
