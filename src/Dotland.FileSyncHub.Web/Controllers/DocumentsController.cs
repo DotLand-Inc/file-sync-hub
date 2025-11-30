@@ -1,10 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Application.Documents.Queries.GetDocumentVersions;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetVersioningStatus;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Models.Requests;
@@ -75,31 +75,23 @@ public class DocumentsController(
     /// Get all versions of a document.
     /// </summary>
     [HttpGet("{organizationId}/versions/{documentId}")]
-    [ProducesResponseType(typeof(List<DocumentVersion>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetVersions(
+    [ProducesResponseType(typeof(GetDocumentVersionsResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDocumentVersionsAsync(
         string organizationId,
         string documentId,
         [FromQuery] DocumentCategory category,
         CancellationToken cancellationToken)
     {
-        var versions = await storageService.GetDocumentVersionsAsync(
-            organizationId, category, documentId, cancellationToken);
-
-        var versioningQuery = new GetVersioningStatusQuery
+        var query = new GetDocumentVersionsQuery
         {
             OrganizationId = organizationId,
+            DocumentId = documentId,
             Category = category
         };
 
-        var versioningEnabled = await mediator.Send(versioningQuery, cancellationToken);
+        var result = await mediator.Send(query, cancellationToken);
 
-        return Ok(new
-        {
-            documentId,
-            versioningEnabled,
-            versions,
-            count = versions.Count
-        });
+        return Ok(result);
     }
 
     /// <summary>
@@ -107,7 +99,10 @@ public class DocumentsController(
     /// </summary>
     [HttpGet("{organizationId}/versioning/{category}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> CheckVersioning(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> CheckVersioningAsync(
+        string organizationId,
+        DocumentCategory category,
+        CancellationToken cancellationToken)
     {
         var query = new GetVersioningStatusQuery
         {
