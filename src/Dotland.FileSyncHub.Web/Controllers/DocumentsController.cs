@@ -1,5 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Application.Documents.Queries.GetVersioningStatus;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Models.Requests;
 using MediatR;
@@ -45,8 +51,16 @@ public class DocumentsController(
         [FromForm] UploadDocumentVersionRequest request,
         CancellationToken cancellationToken = default)
     {
-        // Check if versioning is enabled for this category
-        if (!await storageService.IsVersioningEnabledAsync(request.OrganizationId, request.Category, cancellationToken))
+        // Check if versioning is enabled for this category using CQRS query
+        var versioningQuery = new GetVersioningStatusQuery
+        {
+            OrganizationId = request.OrganizationId,
+            Category = request.Category
+        };
+
+        var isVersioningEnabled = await mediator.Send(versioningQuery, cancellationToken);
+
+        if (!isVersioningEnabled)
         {
             return BadRequest(new { error = $"Versioning is not enabled for category '{request.Category}' in this organization" });
         }
@@ -66,15 +80,23 @@ public class DocumentsController(
         string organizationId,
         string documentId,
         [FromQuery] DocumentCategory category,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var versions = await storageService.GetDocumentVersionsAsync(
             organizationId, category, documentId, cancellationToken);
 
+        var versioningQuery = new GetVersioningStatusQuery
+        {
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        var versioningEnabled = await mediator.Send(versioningQuery, cancellationToken);
+
         return Ok(new
         {
             documentId,
-            versioningEnabled = await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken),
+            versioningEnabled,
             versions,
             count = versions.Count
         });
@@ -87,7 +109,14 @@ public class DocumentsController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckVersioning(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default)
     {
-        var enabled = await storageService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
+        var query = new GetVersioningStatusQuery
+        {
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        var enabled = await mediator.Send(query, cancellationToken);
+
         return Ok(new { organizationId, category = category.ToString(), versioningEnabled = enabled });
     }
 

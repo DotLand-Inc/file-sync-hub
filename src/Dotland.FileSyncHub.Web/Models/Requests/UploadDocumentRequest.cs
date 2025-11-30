@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Documents.Commands.UploadDocument;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Extensions;
@@ -18,7 +20,7 @@ public class UploadDocumentRequest
     /// <summary>
     /// Converts the request to an UploadDocumentCommand.
     /// </summary>
-    public async Task<UploadDocumentCommand> ToCommandAsync(CancellationToken cancellationToken = default)
+    public async Task<UploadDocumentCommand> ToCommandAsync(CancellationToken cancellationToken)
     {
         var fileContent = await File.ToByteArrayAsync(cancellationToken);
 

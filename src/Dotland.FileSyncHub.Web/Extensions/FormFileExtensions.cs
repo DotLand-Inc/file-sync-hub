@@ -1,3 +1,7 @@
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
 namespace Dotland.FileSyncHub.Web.Extensions;
@@ -15,7 +19,7 @@ public static class FormFileExtensions
     /// <returns>Byte array containing the file content.</returns>
     public static async Task<byte[]> ToByteArrayAsync(
         this IFormFile? formFile,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         if (formFile == null || formFile.Length == 0)
         {
