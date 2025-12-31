@@ -1,10 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Dotland.FileSyncHub.Application.Versioning;
+using Dotland.FileSyncHub.Application.Versioning.Commands.CreateVersioningConfiguration;
+using Dotland.FileSyncHub.Application.Versioning.Commands.DeleteVersioningConfiguration;
+using Dotland.FileSyncHub.Application.Versioning.Commands.RemoveCategoryVersioning;
+using Dotland.FileSyncHub.Application.Versioning.Commands.SetCategoryVersioning;
+using Dotland.FileSyncHub.Application.Versioning.Commands.UpdateVersioningConfiguration;
 using Dotland.FileSyncHub.Application.Versioning.DTOs;
+using Dotland.FileSyncHub.Application.Versioning.Queries.CheckVersioningEnabled;
+using Dotland.FileSyncHub.Application.Versioning.Queries.GetAllVersioningConfigurations;
+using Dotland.FileSyncHub.Application.Versioning.Queries.GetMaxVersions;
+using Dotland.FileSyncHub.Application.Versioning.Queries.GetVersioningConfiguration;
 using Dotland.FileSyncHub.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
@@ -14,25 +19,33 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/versioning")]
-public class VersioningController(IVersioningService versioningService) : ControllerBase
+public class VersioningController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Get all versioning configurations
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<OrganizationVersioningConfigurationDto>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<GetAllVersioningConfigurationsResult>> GetAllVersioningConfigurationsAsync(
+        CancellationToken cancellationToken)
     {
-        var configs = await versioningService.GetAllConfigurationsAsync(cancellationToken);
-        return Ok(configs);
+        var query = new GetAllVersioningConfigurationsQuery();
+        var result = await mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
     /// Get versioning configuration for an organization
     /// </summary>
     [HttpGet("{organizationId}")]
-    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> GetByOrganization(string organizationId, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> GetVersioningConfigurationAsync(
+        string organizationId, CancellationToken cancellationToken)
     {
-        var config = await versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
+        var query = new GetVersioningConfigurationQuery
+        {
+            OrganizationId = organizationId
+        };
+
+        var config = await mediator.Send(query, cancellationToken);
 
         if (config == null)
             return NotFound($"No versioning configuration found for organization {organizationId}");
@@ -44,104 +57,117 @@ public class VersioningController(IVersioningService versioningService) : Contro
     /// Create versioning configuration for an organization
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> Create([FromBody] CreateOrganizationVersioningConfigurationDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> PostAsync(
+        [FromBody] CreateOrganizationVersioningConfigurationDto dto,
+        CancellationToken cancellationToken)
     {
-        try
+        var command = new CreateVersioningConfigurationCommand
         {
-            var config = await versioningService.CreateOrganizationConfigurationAsync(dto, null, cancellationToken);
-            return CreatedAtAction(nameof(GetByOrganization), new { organizationId = config.OrganizationId }, config);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ex.Message);
-        }
+            Dto = dto
+        };
+
+        var config = await mediator.Send(command, cancellationToken);
+        return Ok(new { OrganizationId = config.OrganizationId, OriginalConfig = config });
     }
 
     /// <summary>
     /// Update versioning configuration for an organization
     /// </summary>
     [HttpPut("{organizationId}")]
-    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> Update(string organizationId, [FromBody] UpdateOrganizationVersioningConfigurationDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrganizationVersioningConfigurationDto>> UpdateVersioningConfigurationAsync(
+        string organizationId,
+        [FromBody] UpdateOrganizationVersioningConfigurationDto dto,
+        CancellationToken cancellationToken)
     {
-        try
+        var command = new UpdateVersioningConfigurationCommand
         {
-            var config = await versioningService.UpdateOrganizationConfigurationAsync(organizationId, dto, null, cancellationToken);
-            return Ok(config);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+            OrganizationId = organizationId,
+            Dto = dto
+        };
+
+        var config = await mediator.Send(command, cancellationToken);
+        return Ok(config);
     }
 
     /// <summary>
     /// Set category-specific versioning configuration
     /// </summary>
     [HttpPut("{organizationId}/categories")]
-    public async Task<IActionResult> SetCategoryConfiguration(string organizationId, [FromBody] SetCategoryVersioningConfigurationDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> SetCategoryVersioningAsync(
+        string organizationId,
+        [FromBody] SetCategoryVersioningConfigurationDto dto,
+        CancellationToken cancellationToken)
     {
-        try
+        var command = new SetCategoryVersioningCommand
         {
-            await versioningService.SetCategoryConfigurationAsync(organizationId, dto, null, cancellationToken);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+            OrganizationId = organizationId,
+            Dto = dto
+        };
+
+        await mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
     /// Remove category-specific versioning configuration
     /// </summary>
     [HttpDelete("{organizationId}/categories/{category}")]
-    public async Task<IActionResult> RemoveCategoryConfiguration(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
+    public async Task<IActionResult> RemoveCategoryVersioningAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
     {
-        try
+        var command = new RemoveCategoryVersioningCommand
         {
-            await versioningService.RemoveCategoryConfigurationAsync(organizationId, category, null, cancellationToken);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        await mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
     /// Check if versioning is enabled for a specific organization and category
     /// </summary>
     [HttpGet("{organizationId}/categories/{category}/enabled")]
-    public async Task<ActionResult<bool>> IsVersioningEnabled(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
+    public async Task<ActionResult<CheckVersioningEnabledResult>> CheckVersioningEnabledAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
     {
-        var isEnabled = await versioningService.IsVersioningEnabledAsync(organizationId, category, cancellationToken);
-        return Ok(new { isEnabled });
+        var query = new CheckVersioningEnabledQuery
+        {
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        var result = await mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
     /// Get max versions for a specific organization and category
     /// </summary>
     [HttpGet("{organizationId}/categories/{category}/max-versions")]
-    public async Task<ActionResult<int>> GetMaxVersions(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
+    public async Task<ActionResult<GetMaxVersionsResult>> GetMaxVersionsAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
     {
-        var maxVersions = await versioningService.GetMaxVersionsAsync(organizationId, category, cancellationToken);
-        return Ok(new { maxVersions });
+        var query = new GetMaxVersionsQuery
+        {
+            OrganizationId = organizationId,
+            Category = category
+        };
+
+        var result = await mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
     /// Delete (deactivate) versioning configuration for an organization
     /// </summary>
     [HttpDelete("{organizationId}")]
-    public async Task<IActionResult> Delete(string organizationId, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteVersioningConfigurationAsync(string organizationId, CancellationToken cancellationToken)
     {
-        try
+        var command = new DeleteVersioningConfigurationCommand
         {
-            await versioningService.DeleteOrganizationConfigurationAsync(organizationId, cancellationToken);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(ex.Message);
-        }
+            OrganizationId = organizationId
+        };
+
+        await mediator.Send(command, cancellationToken);
+        return NoContent();
     }
 }

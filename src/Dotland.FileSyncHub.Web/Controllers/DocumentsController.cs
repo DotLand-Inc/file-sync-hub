@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Documents.Commands.DeleteDocument;
 using Dotland.FileSyncHub.Application.Documents.Queries.DocumentDirectDownload;
@@ -10,7 +8,6 @@ using Dotland.FileSyncHub.Application.Documents.Queries.GetVersioningStatus;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Models.Requests;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
@@ -34,7 +31,7 @@ public class DocumentsController(IMediator mediator) : ControllerBase
         var command = await request.ToCommandAsync(cancellationToken);
         var result = await mediator.Send(command, cancellationToken);
 
-        return CreatedAtAction(nameof(GetDownloadUrlAsync), new { s3Key = result.S3Key }, result);
+        return Ok( new { S3Key = result.S3Key, Payload = result } );
     }
 
     /// <summary>

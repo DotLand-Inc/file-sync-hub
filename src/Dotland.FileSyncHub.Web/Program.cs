@@ -1,9 +1,11 @@
 using Dotland.FileSyncHub.Application;
 using Dotland.FileSyncHub.Application.Common.Settings;
 using Dotland.FileSyncHub.Infrastructure;
+using Dotland.FileSyncHub.Infrastructure.Persistence;
 using Dotland.FileSyncHub.Web.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +40,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Apply database migrations automatically on startup
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<FileSyncHubDbContext>();
+    dbContext.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline
 app.UseExceptionHandler();

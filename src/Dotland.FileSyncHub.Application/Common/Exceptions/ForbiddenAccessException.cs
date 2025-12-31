@@ -5,8 +5,4 @@ namespace Dotland.FileSyncHub.Application.Common.Exceptions;
 /// </summary>
 public class ForbiddenAccessException : Exception
 {
-    public ForbiddenAccessException()
-        : base()
-    {
-    }
 }
