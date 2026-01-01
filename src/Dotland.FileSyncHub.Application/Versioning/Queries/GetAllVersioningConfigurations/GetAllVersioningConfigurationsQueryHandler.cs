@@ -1,27 +1,46 @@
-using Dotland.FileSyncHub.Application.Versioning;
+using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Application.Versioning.DTOs;
+using Dotland.FileSyncHub.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dotland.FileSyncHub.Application.Versioning.Queries.GetAllVersioningConfigurations;
 
 /// <summary>
 /// Handler for GetAllVersioningConfigurationsQuery.
 /// </summary>
-public class GetAllVersioningConfigurationsQueryHandler : IRequestHandler<GetAllVersioningConfigurationsQuery, GetAllVersioningConfigurationsResult>
+public class GetAllVersioningConfigurationsQueryHandler(IApplicationDbContext applicationDbContext)
+    : IRequestHandler<GetAllVersioningConfigurationsQuery, GetAllVersioningConfigurationsResult>
 {
-    private readonly IVersioningService _versioningService;
-
-    public GetAllVersioningConfigurationsQueryHandler(IVersioningService versioningService)
-    {
-        _versioningService = versioningService;
-    }
-
     public async Task<GetAllVersioningConfigurationsResult> Handle(GetAllVersioningConfigurationsQuery request, CancellationToken cancellationToken)
     {
-        var configurations = await _versioningService.GetAllConfigurationsAsync(cancellationToken);
-
+        var configs = await applicationDbContext.OrganizationVersioningConfigurations
+            .Include(c => c.CategoryConfigurations)
+            .Where(c => c.IsActive)
+            .ToListAsync(cancellationToken);
+        
         return new GetAllVersioningConfigurationsResult
         {
-            Configurations = configurations
+            Configurations = configs
+                .Select(MapToDto)
+                .ToList()
         };
+    }
+    
+    private static OrganizationVersioningConfigurationDto MapToDto(OrganizationVersioningConfiguration config)
+    {
+        return new OrganizationVersioningConfigurationDto(
+            config.Id,
+            config.OrganizationId,
+            config.DefaultVersioningEnabled,
+            config.DefaultMaxVersions,
+            config.IsActive,
+            config.CategoryConfigurations.Select(c => new CategoryVersioningConfigurationDto(
+                c.Id,
+                c.Category,
+                c.VersioningEnabled,
+                c.MaxVersions
+            )).ToList()
+        );
     }
 }
