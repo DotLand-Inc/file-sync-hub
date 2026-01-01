@@ -30,7 +30,8 @@ public class SetCategoryVersioningCommandHandler(IApplicationDbContext dbContext
         }
         
         var categoryConfiguration = await dbContext.CategoryVersioningConfigurations
-            .SingleOrDefaultAsync(e => e.Category == request.Dto.Category,
+            .SingleOrDefaultAsync(e => e.Category == request.Dto.Category &&
+                                       e.OrganizationVersioningConfigurationId == organisationConfig.Id,
                 cancellationToken);
 
         if (categoryConfiguration == null)

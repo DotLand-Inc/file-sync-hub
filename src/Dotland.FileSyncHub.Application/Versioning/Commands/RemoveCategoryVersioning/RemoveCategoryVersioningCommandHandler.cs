@@ -1,26 +1,40 @@
 using Dotland.FileSyncHub.Application.Common.Exceptions;
-using Dotland.FileSyncHub.Application.Versioning;
+using Dotland.FileSyncHub.Application.Common.Services;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dotland.FileSyncHub.Application.Versioning.Commands.RemoveCategoryVersioning;
 
 /// <summary>
 /// Handler for RemoveCategoryVersioningCommand.
 /// </summary>
-public class RemoveCategoryVersioningCommandHandler : IRequestHandler<RemoveCategoryVersioningCommand, Unit>
+public class RemoveCategoryVersioningCommandHandler(IApplicationDbContext dbContext)
+    : IRequestHandler<RemoveCategoryVersioningCommand, Unit>
 {
-    private readonly IVersioningService _versioningService;
-
-    public RemoveCategoryVersioningCommandHandler(IVersioningService versioningService)
-    {
-        _versioningService = versioningService;
-    }
-
     public async Task<Unit> Handle(RemoveCategoryVersioningCommand request, CancellationToken cancellationToken)
     {
         try
         {
-            await _versioningService.RemoveCategoryConfigurationAsync(request.OrganizationId, request.Category, null, cancellationToken);
+            var config = await dbContext.OrganizationVersioningConfigurations
+                .Include(c => c.CategoryConfigurations)
+                .SingleOrDefaultAsync(c => c.OrganizationId == request.OrganizationId &&
+                                           c.IsActive, cancellationToken);
+            
+            if (config == null)
+                throw new InvalidOperationException(
+                    $"Configuration not found for organization {request.OrganizationId}");
+
+            var category = config.CategoryConfigurations.SingleOrDefault(e => 
+                e.Category == request.Category);
+
+            if (category != null)
+            {
+                dbContext.CategoryVersioningConfigurations.Remove(category);
+                config.SetUpdated("admin");
+                
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            
             return Unit.Value;
         }
         catch (InvalidOperationException)

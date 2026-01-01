@@ -112,7 +112,10 @@ public class VersioningController(IMediator mediator) : ControllerBase
     /// Remove category-specific versioning configuration
     /// </summary>
     [HttpDelete("{organizationId}/categories/{category}")]
-    public async Task<IActionResult> RemoveCategoryVersioningAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
+    public async Task<IActionResult> RemoveCategoryVersioningAsync(
+        string organizationId,
+        DocumentCategory category,
+        CancellationToken cancellationToken)
     {
         var command = new RemoveCategoryVersioningCommand
         {
@@ -122,38 +125,6 @@ public class VersioningController(IMediator mediator) : ControllerBase
 
         await mediator.Send(command, cancellationToken);
         return NoContent();
-    }
-
-    /// <summary>
-    /// Check if versioning is enabled for a specific organization and category
-    /// </summary>
-    [HttpGet("{organizationId}/categories/{category}/enabled")]
-    public async Task<ActionResult<CheckVersioningEnabledResult>> CheckVersioningEnabledAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
-    {
-        var query = new CheckVersioningEnabledQuery
-        {
-            OrganizationId = organizationId,
-            Category = category
-        };
-
-        var result = await mediator.Send(query, cancellationToken);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Get max versions for a specific organization and category
-    /// </summary>
-    [HttpGet("{organizationId}/categories/{category}/max-versions")]
-    public async Task<ActionResult<GetMaxVersionsResult>> GetMaxVersionsAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken)
-    {
-        var query = new GetMaxVersionsQuery
-        {
-            OrganizationId = organizationId,
-            Category = category
-        };
-
-        var result = await mediator.Send(query, cancellationToken);
-        return Ok(result);
     }
 
     /// <summary>

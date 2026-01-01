@@ -1,4 +1,5 @@
 using Dotland.FileSyncHub.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Dotland.FileSyncHub.Application.Versioning.DTOs;
 
@@ -30,6 +31,7 @@ public record UpdateOrganizationVersioningConfigurationDto(
 );
 
 public record SetCategoryVersioningConfigurationDto(
+    [property: JsonConverter(typeof(Dotland.FileSyncHub.Application.Common.Converters.DocumentCategoryJsonConverter))]
     DocumentCategory Category,
     bool VersioningEnabled,
     int MaxVersions
