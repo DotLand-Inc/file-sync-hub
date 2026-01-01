@@ -54,41 +54,18 @@ public class S3StorageService(
 
             // Validate file
             ValidateFile(uploadS3FileDto.Filename, fileBytes.Length);
-
-            // Determine version number
-            var version = 1;
+            
             var isNewDocument = string.IsNullOrEmpty(uploadS3FileDto.DocumentId);
-
+            
             if (isNewDocument)
             {
                 uploadS3FileDto.DocumentId = Guid.NewGuid().ToString();
-            }
-            else if (uploadS3FileDto.VersioningEnabled)
-            {
-                if (uploadS3FileDto.DocumentId == null)
-                {
-                    return new UploadResult
-                    {
-                        Success = false,
-                        Filename = uploadS3FileDto.Filename,
-                        ErrorMessage = "S3 upload failed: Document id is required when uploading new version."
-                    };
-                }
-
-                if (string.IsNullOrWhiteSpace(uploadS3FileDto.S3Key))
-                {
-                    return new UploadResult
-                    {
-                        Success = false,
-                        Filename = uploadS3FileDto.Filename,
-                        ErrorMessage = "S3 upload failed: s3Key is required when upload new version."
-                    };
-                }
                 
-                // Get current max version
-                version = await GetNextVersionAsync(
-                    uploadS3FileDto.S3Key,
-                    cancellationToken);
+                uploadS3FileDto.S3Key = GenerateS3Key(
+                    uploadS3FileDto.OrganizationId,
+                    uploadS3FileDto.Category,
+                    uploadS3FileDto.Filename,
+                    uploadS3FileDto.DocumentId);
             }
             
             if (uploadS3FileDto.DocumentId == null)
@@ -97,45 +74,36 @@ public class S3StorageService(
                 {
                     Success = false,
                     Filename = uploadS3FileDto.Filename,
-                    ErrorMessage = "S3 upload failed: Unknown error."
+                    ErrorMessage = "S3 upload failed: Document id is required."
                 };
             }
-
-            // Generate S3 key with new structure
-            var s3Key = GenerateS3Key(
-                uploadS3FileDto.OrganizationId,
-                uploadS3FileDto.Category,
-                uploadS3FileDto.Filename,
-                version);
-
+            
+            if (string.IsNullOrWhiteSpace(uploadS3FileDto.S3Key))
+            {
+                return new UploadResult
+                {
+                    Success = false,
+                    Filename = uploadS3FileDto.Filename,
+                    ErrorMessage = "S3 upload failed: s3Key is required."
+                };
+            }
+            
             // Auto-detect content type if not provided
             uploadS3FileDto.ContentType ??= GetContentType(uploadS3FileDto.Filename);
-
+            
             // Prepare metadata
             var s3Metadata = new Dictionary<string, string>
             {
-                ["original-filename"] = uploadS3FileDto.Filename,
-                ["organization-id"] = uploadS3FileDto.OrganizationId,
-                ["category"] = uploadS3FileDto.Category.ToString().ToLowerInvariant(),
                 ["document-id"] = uploadS3FileDto.DocumentId,
-                ["version"] = version.ToString(),
                 ["checksum"] = CalculateChecksum(fileBytes)
             };
-
-            if (uploadS3FileDto.Metadata != null)
-            {
-                foreach (var kvp in uploadS3FileDto.Metadata)
-                {
-                    s3Metadata[kvp.Key] = kvp.Value;
-                }
-            }
-
+            
             // Upload to S3
             memoryStream.Position = 0;
             var request = new PutObjectRequest()
             {
                 BucketName = _settings.BucketName,
-                Key = s3Key,
+                Key = uploadS3FileDto.S3Key,
                 InputStream = memoryStream,
                 ContentType = uploadS3FileDto.ContentType,
             };
@@ -144,36 +112,23 @@ public class S3StorageService(
             {
                 request.Metadata.Add(kvp.Key, kvp.Value);
             }
-
+            
             var response = await s3Client.PutObjectAsync(request, cancellationToken);
 
             logger.LogInformation(
                 "File uploaded: {S3Key}, Version: {Version}, Versioning: {Versioning}",
-                s3Key,
-                version,
+                uploadS3FileDto.S3Key,
+                response.VersionId,
                 uploadS3FileDto.VersioningEnabled);
-
-            // Clean up old versions if max versions is set
-            if (uploadS3FileDto.VersioningEnabled &&
-                !isNewDocument &&
-                uploadS3FileDto.MaxVersions > 0 &&
-                !string.IsNullOrWhiteSpace(uploadS3FileDto.S3Key))
-            {
-                await CleanupOldVersionsAsync(
-                    uploadS3FileDto.S3Key,
-                    uploadS3FileDto.MaxVersions,
-                    cancellationToken);
-            }
 
             return new UploadResult
             {
                 Success = true,
                 DocumentId = uploadS3FileDto.DocumentId,
-                S3Key = s3Key,
+                S3Key = uploadS3FileDto.S3Key,
                 Filename = uploadS3FileDto.Filename,
                 SizeBytes = fileBytes.Length,
                 ContentType = uploadS3FileDto.ContentType,
-                Version = version,
                 VersioningEnabled = uploadS3FileDto.VersioningEnabled,
                 S3VersionId = response.VersionId
             };
@@ -193,6 +148,7 @@ public class S3StorageService(
             logger.LogError(ex, "Upload failed for file: {Filename}", uploadS3FileDto.Filename);
             throw;
         }
+
     }
 
     /// <summary>
@@ -468,19 +424,18 @@ public class S3StorageService(
 
     /// <summary>
     /// Generate S3 key with new organization structure.
-    /// Format: organizations/{org_id}/{year}/{category}/{doc_id}_v{version}_{filename}
     /// </summary>
     private string GenerateS3Key(
         string organizationId,
         DocumentCategory category,
         string filename,
-        int version)
+        string documentId)
     {
         var year = DateTime.UtcNow.ToString("yyyy");
         var safeFilename = SanitizeFilename(filename);
         var categoryFolder = category.ToString().ToLowerInvariant();
 
-        return $"{OrganizationsPrefix}/{organizationId}/{year}/{categoryFolder}/v{version}_{safeFilename}";
+        return $"{OrganizationsPrefix}/{organizationId}/{year}/{categoryFolder}/{documentId}_{safeFilename}";
     }
 
     private static string SanitizeFilename(string filename)

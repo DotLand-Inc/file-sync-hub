@@ -1,6 +1,7 @@
 using Dotland.FileSyncHub.Application.Common.Exceptions;
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Common.Services;
+using Dotland.FileSyncHub.Domain.Entities;
 using Dotland.FileSyncHub.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -69,10 +70,32 @@ public class UploadDocumentCommandHandler(
             await dbContext.Documents.AddAsync(document, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 
+            if (!string.IsNullOrWhiteSpace(request.ParentDocumentId))
+            {
+                var parentDocumentId = Guid.Parse(request.ParentDocumentId);
+
+                // Verify parent document exists
+                var parentExists = await dbContext.Documents
+                    .AnyAsync(d => d.Id == parentDocumentId, cancellationToken);
+
+                if (!parentExists)
+                {
+                    throw new NotFoundException("Parent Document", request.ParentDocumentId);
+                }
+
+                await dbContext.DocumentRelations.AddAsync(
+                    DocumentRelation.Create(
+                        document.Id,
+                        parentDocumentId,
+                        request.ParentRelationDescription,
+                        "admin")
+                    , cancellationToken);
+            }
+            
             var documentVersion = Domain.Entities.DocumentVersion.Create(
                 document.Id,
-                result.Version,
-                result.S3Key,
+                1,
+                result.S3VersionId,
                 result.Filename,
                 result.ContentType,
                 result.SizeBytes,

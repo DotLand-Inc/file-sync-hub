@@ -14,7 +14,9 @@ public class DocumentRelation : Entity
     public Document SourceDocument { get; private set; } = null!;
     public Document TargetDocument { get; private set; } = null!;
 
-    private DocumentRelation() { }
+    private DocumentRelation()
+    {
+    }
 
     public static DocumentRelation Create(
         Guid sourceDocumentId,
@@ -24,10 +26,14 @@ public class DocumentRelation : Entity
     {
         return new DocumentRelation
         {
+            Id = Guid.NewGuid(),
             SourceDocumentId = sourceDocumentId,
             TargetDocumentId = targetDocumentId,
             Description = description,
-            CreatedBy = createdBy
+            CreatedBy = createdBy,
+            UpdatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 

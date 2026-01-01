@@ -10,5 +10,6 @@ public interface IApplicationDbContext
     DbSet<Document> Documents { get; }
     DbSet<DocumentVersion> DocumentVersions { get; }
     DbSet<DocumentStatusHistory> DocumentStatusHistory { get; }
+    DbSet<DocumentRelation> DocumentRelations { get;  }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

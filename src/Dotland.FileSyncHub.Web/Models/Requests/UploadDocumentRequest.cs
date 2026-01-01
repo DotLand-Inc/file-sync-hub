@@ -13,7 +13,9 @@ public class UploadDocumentRequest
     public string OrganizationId { get; set; } = string.Empty;
     public DocumentCategory Category { get; set; } = DocumentCategory.Other;
     public string? Description { get; set; }
-
+    public string? ParentDocumentId { get; set; }
+    public string? ParentRelationDescription { get; set; }
+    
     /// <summary>
     /// Converts the request to an UploadDocumentCommand.
     /// </summary>
@@ -28,7 +30,9 @@ public class UploadDocumentRequest
             OrganizationId = OrganizationId,
             Category = Category,
             ContentType = File?.ContentType,
-            Description = Description
+            Description = Description,
+            ParentDocumentId = ParentDocumentId,
+            ParentRelationDescription = ParentRelationDescription,
         };
     }
 }

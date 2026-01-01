@@ -31,7 +31,7 @@ public class DocumentsController(IMediator mediator) : ControllerBase
         var command = await request.ToCommandAsync(cancellationToken);
         var result = await mediator.Send(command, cancellationToken);
 
-        return Ok( new { S3Key = result.S3Key, Payload = result } );
+        return Ok( result );
     }
 
     /// <summary>

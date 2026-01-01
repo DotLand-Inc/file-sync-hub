@@ -38,4 +38,14 @@ public class UploadDocumentCommand : IRequest<UploadResult>
     /// Optional description metadata.
     /// </summary>
     public string? Description { get; init; }
+    
+    /// <summary>
+    /// Optional: the parentId of current document.
+    /// </summary>
+    public string? ParentDocumentId { get; set; }
+    
+    /// <summary>
+    /// Optional: relation description between documents 
+    /// </summary>
+    public string? ParentRelationDescription { get; set; }
 }
