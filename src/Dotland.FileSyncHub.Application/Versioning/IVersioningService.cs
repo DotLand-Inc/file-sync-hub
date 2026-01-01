@@ -12,7 +12,6 @@ public interface IVersioningService
     Task<IReadOnlyList<OrganizationVersioningConfigurationDto>> GetAllConfigurationsAsync(CancellationToken cancellationToken = default);
     Task<OrganizationVersioningConfigurationDto> CreateOrganizationConfigurationAsync(CreateOrganizationVersioningConfigurationDto dto, string? createdBy = null, CancellationToken cancellationToken = default);
     Task<OrganizationVersioningConfigurationDto> UpdateOrganizationConfigurationAsync(string organizationId, UpdateOrganizationVersioningConfigurationDto dto, string? updatedBy = null, CancellationToken cancellationToken = default);
-    Task SetCategoryConfigurationAsync(string organizationId, SetCategoryVersioningConfigurationDto dto, string? updatedBy = null, CancellationToken cancellationToken = default);
     Task RemoveCategoryConfigurationAsync(string organizationId, DocumentCategory category, string? updatedBy = null, CancellationToken cancellationToken = default);
     Task<bool> IsVersioningEnabledAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default);
     Task<int> GetMaxVersionsAsync(string organizationId, DocumentCategory category, CancellationToken cancellationToken = default);

@@ -73,6 +73,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IVersioningConfigurationRepository, VersioningConfigurationRepository>();
 
         services.AddScoped<IS3StorageService, S3StorageService>();
+        services.AddScoped<IApplicationDbContext, FileSyncHubDbContext>();
 
         return services;
     }

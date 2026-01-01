@@ -68,27 +68,6 @@ public class VersioningService : IVersioningService
         return MapToDto(config);
     }
 
-    public async Task SetCategoryConfigurationAsync(string organizationId, SetCategoryVersioningConfigurationDto dto, string? updatedBy = null, CancellationToken cancellationToken = default)
-    {
-        var config = await _unitOfWork.VersioningConfigurations.GetByOrganizationIdWithCategoriesAsync(organizationId, cancellationToken);
-
-        if (config == null)
-            throw new InvalidOperationException($"Configuration not found for organization {organizationId}");
-
-        var categoryConfig = CategoryVersioningConfiguration.Create(
-            config.Id,
-            dto.Category,
-            dto.VersioningEnabled,
-            dto.MaxVersions,
-            updatedBy
-        );
-
-        config.AddCategoryConfiguration(categoryConfig);
-        config.SetUpdated(updatedBy);
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task RemoveCategoryConfigurationAsync(string organizationId, DocumentCategory category, string? updatedBy = null, CancellationToken cancellationToken = default)
     {
         var config = await _unitOfWork.VersioningConfigurations.GetByOrganizationIdWithCategoriesAsync(organizationId, cancellationToken);

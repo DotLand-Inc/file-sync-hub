@@ -1,31 +1,57 @@
 using Dotland.FileSyncHub.Application.Common.Exceptions;
+using Dotland.FileSyncHub.Application.Common.Services;
 using Dotland.FileSyncHub.Application.Versioning;
+using Dotland.FileSyncHub.Domain.Entities;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dotland.FileSyncHub.Application.Versioning.Commands.SetCategoryVersioning;
 
 /// <summary>
 /// Handler for SetCategoryVersioningCommand.
 /// </summary>
-public class SetCategoryVersioningCommandHandler : IRequestHandler<SetCategoryVersioningCommand, Unit>
+public class SetCategoryVersioningCommandHandler(IApplicationDbContext dbContext)
+    : IRequestHandler<SetCategoryVersioningCommand, Unit>
 {
-    private readonly IVersioningService _versioningService;
-
-    public SetCategoryVersioningCommandHandler(IVersioningService versioningService)
+    public async Task<Unit> Handle(
+        SetCategoryVersioningCommand request,
+        CancellationToken cancellationToken)
     {
-        _versioningService = versioningService;
-    }
-
-    public async Task<Unit> Handle(SetCategoryVersioningCommand request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await _versioningService.SetCategoryConfigurationAsync(request.OrganizationId, request.Dto, null, cancellationToken);
-            return Unit.Value;
-        }
-        catch (InvalidOperationException)
+        var organisationConfig = await dbContext
+            .OrganizationVersioningConfigurations
+            .SingleOrDefaultAsync(
+                e =>
+                    e.OrganizationId  == request.OrganizationId,
+                cancellationToken);
+        
+        if (organisationConfig == null)
         {
             throw new NotFoundException("VersioningConfiguration", request.OrganizationId);
         }
+        
+        var categoryConfiguration = await dbContext.CategoryVersioningConfigurations
+            .SingleOrDefaultAsync(e => e.Category == request.Dto.Category,
+                cancellationToken);
+
+        if (categoryConfiguration == null)
+        {
+            categoryConfiguration = CategoryVersioningConfiguration.Create(
+                organisationConfig.Id,
+                request.Dto.Category,
+                request.Dto.VersioningEnabled,
+                request.Dto.MaxVersions,
+                "admin");
+            dbContext.CategoryVersioningConfigurations.Add(categoryConfiguration);
+        }
+        else
+        {
+            categoryConfiguration.Update(request.Dto.VersioningEnabled,
+                request.Dto.MaxVersions,
+                "admin");
+        }
+        
+        await dbContext.SaveChangesAsync(cancellationToken);
+        
+        return Unit.Value;
     }
 }
