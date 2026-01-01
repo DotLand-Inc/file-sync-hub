@@ -63,9 +63,14 @@ public class UploadDocumentVersionCommandHandler(IS3StorageService storageServic
 
         if (result.Success)
         {
+            var version = dbContext.DocumentVersions.Where(e => e.DocumentId == document.Id)
+                .Max(e => e.VersionNumber);
+            
+            result.Version = version;
+            
             var documentVersion = Domain.Entities.DocumentVersion.Create(
                 document.Id,
-                result.Version,
+                version + 1,
                 result.S3VersionId,
                 result.Filename,
                 result.ContentType,

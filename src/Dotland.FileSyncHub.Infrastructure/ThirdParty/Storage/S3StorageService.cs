@@ -341,7 +341,6 @@ public class S3StorageService(
         CancellationToken cancellationToken)
     {
         // Convert Web category to Domain category
-        var domainCategory = MapToDomainCategory(category);
 
         // Try database configuration first
         var dbConfig = await versioningService.GetOrganizationConfigurationAsync(organizationId, cancellationToken);
@@ -349,7 +348,7 @@ public class S3StorageService(
         if (dbConfig != null)
         {
             var categoryConfig = dbConfig.CategoryConfigurations
-                .FirstOrDefault(c => c.Category == domainCategory);
+                .FirstOrDefault(c => c.Category == category);
 
             if (categoryConfig != null)
             {
@@ -362,25 +361,6 @@ public class S3StorageService(
         // Fallback to appsettings configuration
         var orgConfig = _settings.GetOrganizationConfig(organizationId);
         return (orgConfig.IsVersioningEnabled(category), orgConfig.GetMaxVersions(category));
-    }
-
-    /// <summary>
-    /// Map Web DocumentCategory to Domain DocumentCategory.
-    /// </summary>
-    private static DomainCategory MapToDomainCategory(DocumentCategory category)
-    {
-        return category switch
-        {
-            DocumentCategory.Invoices => DomainCategory.Invoices,
-            DocumentCategory.Contracts => DomainCategory.Contracts,
-            DocumentCategory.Reports => DomainCategory.Reports,
-            DocumentCategory.Legal => DomainCategory.Legal,
-            DocumentCategory.HumanResources => DomainCategory.HumanResources,
-            DocumentCategory.Finance => DomainCategory.Finance,
-            DocumentCategory.Technical => DomainCategory.Technical,
-            DocumentCategory.General => DomainCategory.General,
-            _ => DomainCategory.Other
-        };
     }
 
     private async Task<int> GetNextVersionAsync(
