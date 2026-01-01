@@ -7,5 +7,8 @@ public interface IApplicationDbContext
 {
     DbSet<OrganizationVersioningConfiguration> OrganizationVersioningConfigurations { get; }
     DbSet<CategoryVersioningConfiguration> CategoryVersioningConfigurations { get; }
+    DbSet<Document> Documents { get; }
+    DbSet<DocumentVersion> DocumentVersions { get; }
+    DbSet<DocumentStatusHistory> DocumentStatusHistory { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

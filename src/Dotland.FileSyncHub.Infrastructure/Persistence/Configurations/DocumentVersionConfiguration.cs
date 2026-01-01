@@ -12,9 +12,9 @@ public class DocumentVersionConfiguration : IEntityTypeConfiguration<DocumentVer
 
         builder.HasKey(v => v.Id);
 
-        builder.Property(v => v.S3Key)
-            .IsRequired()
-            .HasMaxLength(1000);
+        builder.Property(v => v.AwsVersionId)
+            .IsRequired(false)
+            .HasMaxLength(100);
 
         builder.Property(v => v.FileName)
             .IsRequired()

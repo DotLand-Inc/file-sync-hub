@@ -43,5 +43,10 @@ public enum DocumentStatus
     /// <summary>
     /// Document is marked for deletion
     /// </summary>
-    Deleted = 7
+    Deleted = 7,
+    
+    /// <summary>
+    /// A new version was pushed
+    /// </summary>
+    Reviewed = 8
 }

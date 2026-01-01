@@ -25,6 +25,7 @@ public class DocumentStatusHistory : Entity
     {
         return new DocumentStatusHistory
         {
+            Id = Guid.NewGuid(),
             DocumentId = documentId,
             Status = status,
             Comment = comment,

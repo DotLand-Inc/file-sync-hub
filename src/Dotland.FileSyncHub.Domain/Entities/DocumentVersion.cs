@@ -9,7 +9,7 @@ public class DocumentVersion : Entity
 {
     public Guid DocumentId { get; private set; }
     public int VersionNumber { get; private set; }
-    public string S3Key { get; private set; } = null!;
+    public string? AwsVersionId { get; private set; }
     public string FileName { get; private set; } = null!;
     public string ContentType { get; private set; } = null!;
     public long FileSize { get; private set; }
@@ -23,7 +23,7 @@ public class DocumentVersion : Entity
     public static DocumentVersion Create(
         Guid documentId,
         int versionNumber,
-        string s3Key,
+        string? awsVersionId,
         string fileName,
         string contentType,
         long fileSize,
@@ -34,7 +34,7 @@ public class DocumentVersion : Entity
         {
             DocumentId = documentId,
             VersionNumber = versionNumber,
-            S3Key = s3Key,
+            AwsVersionId = awsVersionId,
             FileName = fileName,
             ContentType = contentType,
             FileSize = fileSize,

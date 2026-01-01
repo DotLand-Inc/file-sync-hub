@@ -11,21 +11,11 @@ public interface IS3StorageService
     /// <summary>
     /// Upload a file to S3.
     /// </summary>
-    /// <param name="fileStream">File content stream.</param>
-    /// <param name="filename">Original filename.</param>
-    /// <param name="organizationId">Organization identifier.</param>
-    /// <param name="category">Document category.</param>
-    /// <param name="contentType">MIME content type.</param>
-    /// <param name="metadata">Optional metadata.</param>
+    /// <param name="uploadS3FileDto">uploadS3FileDto.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Upload result with details.</returns>
     Task<UploadResult> UploadFileAsync(
-        Stream fileStream,
-        string filename,
-        string organizationId,
-        DocumentCategory category = DocumentCategory.Other,
-        string? contentType = null,
-        Dictionary<string, string>? metadata = null,
+        UploadS3FileDto uploadS3FileDto,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -98,36 +88,10 @@ public interface IS3StorageService
     /// <summary>
     /// Get all versions of a document.
     /// </summary>
-    /// <param name="organizationId">Organization identifier.</param>
-    /// <param name="category">Document category.</param>
-    /// <param name="documentId">Document identifier.</param>
+    /// <param name="s3Key">s3Key.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of document versions.</returns>
     Task<List<DocumentVersion>> GetDocumentVersionsAsync(
-        string organizationId,
-        DocumentCategory category,
-        string documentId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Upload a new version of an existing document.
-    /// </summary>
-    /// <param name="fileStream">File content stream.</param>
-    /// <param name="filename">Original filename.</param>
-    /// <param name="organizationId">Organization identifier.</param>
-    /// <param name="category">Document category.</param>
-    /// <param name="documentId">Existing document ID.</param>
-    /// <param name="contentType">MIME content type.</param>
-    /// <param name="metadata">Optional metadata.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Upload result with details.</returns>
-    Task<UploadResult> UploadFileAsync(
-        Stream fileStream,
-        string filename,
-        string organizationId,
-        DocumentCategory category,
-        string? documentId,
-        string? contentType = null,
-        Dictionary<string, string>? metadata = null,
+        string s3Key,
         CancellationToken cancellationToken = default);
 }

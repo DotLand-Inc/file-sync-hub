@@ -36,85 +36,95 @@ public class S3StorageService(
     : IS3StorageService
 {
     private const string OrganizationsPrefix = "organizations";
-    private const string SystemPrefix = "system";
-
     private readonly S3Settings _settings = settings.Value;
-
-    /// <inheritdoc />
-    public async Task<UploadResult> UploadFileAsync(
-        Stream fileStream,
-        string filename,
-        string organizationId,
-        DomainCategory category = DocumentCategory.Other,
-        string? contentType = null,
-        Dictionary<string, string>? metadata = null,
-        CancellationToken cancellationToken = default)
-    {
-        return await UploadFileAsync(
-            fileStream, filename, organizationId, category,
-            documentId: null, contentType, metadata, cancellationToken);
-    }
-
+    
     /// <summary>
     /// Upload a file with optional document ID for versioning.
     /// </summary>
     public async Task<UploadResult> UploadFileAsync(
-        Stream fileStream,
-        string filename,
-        string organizationId,
-        DocumentCategory category,
-        string? documentId,
-        string? contentType = null,
-        Dictionary<string, string>? metadata = null,
+        UploadS3FileDto uploadS3FileDto,
         CancellationToken cancellationToken = default)
     {
         try
         {
             // Read stream to memory for validation and checksum
             using var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream, cancellationToken);
+            await uploadS3FileDto.FileStream.CopyToAsync(memoryStream, cancellationToken);
             var fileBytes = memoryStream.ToArray();
 
             // Validate file
-            ValidateFile(filename, fileBytes.Length);
-
-            // Get versioning config (database first, then fallback to appsettings)
-            var (versioningEnabled, maxVersions) = await GetVersioningConfigAsync(organizationId, category, cancellationToken);
+            ValidateFile(uploadS3FileDto.Filename, fileBytes.Length);
 
             // Determine version number
             var version = 1;
-            var isNewDocument = string.IsNullOrEmpty(documentId);
+            var isNewDocument = string.IsNullOrEmpty(uploadS3FileDto.DocumentId);
 
             if (isNewDocument)
             {
-                documentId = Guid.NewGuid().ToString();
+                uploadS3FileDto.DocumentId = Guid.NewGuid().ToString();
             }
-            else if (versioningEnabled)
+            else if (uploadS3FileDto.VersioningEnabled)
             {
+                if (uploadS3FileDto.DocumentId == null)
+                {
+                    return new UploadResult
+                    {
+                        Success = false,
+                        Filename = uploadS3FileDto.Filename,
+                        ErrorMessage = "S3 upload failed: Document id is required when uploading new version."
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(uploadS3FileDto.S3Key))
+                {
+                    return new UploadResult
+                    {
+                        Success = false,
+                        Filename = uploadS3FileDto.Filename,
+                        ErrorMessage = "S3 upload failed: s3Key is required when upload new version."
+                    };
+                }
+                
                 // Get current max version
-                version = await GetNextVersionAsync(organizationId, category, documentId!, cancellationToken);
+                version = await GetNextVersionAsync(
+                    uploadS3FileDto.S3Key,
+                    cancellationToken);
+            }
+            
+            if (uploadS3FileDto.DocumentId == null)
+            {
+                return new UploadResult
+                {
+                    Success = false,
+                    Filename = uploadS3FileDto.Filename,
+                    ErrorMessage = "S3 upload failed: Unknown error."
+                };
             }
 
             // Generate S3 key with new structure
-            var s3Key = GenerateS3Key(organizationId, category, filename, documentId!, version);
+            var s3Key = GenerateS3Key(
+                uploadS3FileDto.OrganizationId,
+                uploadS3FileDto.Category,
+                uploadS3FileDto.Filename,
+                version);
 
             // Auto-detect content type if not provided
-            contentType ??= GetContentType(filename);
+            uploadS3FileDto.ContentType ??= GetContentType(uploadS3FileDto.Filename);
 
             // Prepare metadata
             var s3Metadata = new Dictionary<string, string>
             {
-                ["original-filename"] = filename,
-                ["organization-id"] = organizationId,
-                ["category"] = category.ToString().ToLowerInvariant(),
-                ["document-id"] = documentId!,
+                ["original-filename"] = uploadS3FileDto.Filename,
+                ["organization-id"] = uploadS3FileDto.OrganizationId,
+                ["category"] = uploadS3FileDto.Category.ToString().ToLowerInvariant(),
+                ["document-id"] = uploadS3FileDto.DocumentId,
                 ["version"] = version.ToString(),
                 ["checksum"] = CalculateChecksum(fileBytes)
             };
 
-            if (metadata != null)
+            if (uploadS3FileDto.Metadata != null)
             {
-                foreach (var kvp in metadata)
+                foreach (var kvp in uploadS3FileDto.Metadata)
                 {
                     s3Metadata[kvp.Key] = kvp.Value;
                 }
@@ -122,12 +132,12 @@ public class S3StorageService(
 
             // Upload to S3
             memoryStream.Position = 0;
-            var request = new PutObjectRequest
+            var request = new PutObjectRequest()
             {
                 BucketName = _settings.BucketName,
                 Key = s3Key,
                 InputStream = memoryStream,
-                ContentType = contentType
+                ContentType = uploadS3FileDto.ContentType,
             };
 
             foreach (var kvp in s3Metadata)
@@ -139,40 +149,48 @@ public class S3StorageService(
 
             logger.LogInformation(
                 "File uploaded: {S3Key}, Version: {Version}, Versioning: {Versioning}",
-                s3Key, version, versioningEnabled);
+                s3Key,
+                version,
+                uploadS3FileDto.VersioningEnabled);
 
             // Clean up old versions if max versions is set
-            if (versioningEnabled && !isNewDocument && maxVersions > 0)
+            if (uploadS3FileDto.VersioningEnabled &&
+                !isNewDocument &&
+                uploadS3FileDto.MaxVersions > 0 &&
+                !string.IsNullOrWhiteSpace(uploadS3FileDto.S3Key))
             {
-                await CleanupOldVersionsAsync(organizationId, category, documentId!, maxVersions, cancellationToken);
+                await CleanupOldVersionsAsync(
+                    uploadS3FileDto.S3Key,
+                    uploadS3FileDto.MaxVersions,
+                    cancellationToken);
             }
 
             return new UploadResult
             {
                 Success = true,
-                DocumentId = documentId!,
+                DocumentId = uploadS3FileDto.DocumentId,
                 S3Key = s3Key,
-                Filename = filename,
+                Filename = uploadS3FileDto.Filename,
                 SizeBytes = fileBytes.Length,
-                ContentType = contentType,
+                ContentType = uploadS3FileDto.ContentType,
                 Version = version,
-                VersioningEnabled = versioningEnabled,
+                VersioningEnabled = uploadS3FileDto.VersioningEnabled,
                 S3VersionId = response.VersionId
             };
         }
         catch (AmazonS3Exception ex)
         {
-            logger.LogError(ex, "S3 upload failed for file: {Filename}", filename);
+            logger.LogError(ex, "S3 upload failed for file: {Filename}", uploadS3FileDto.Filename);
             return new UploadResult
             {
                 Success = false,
-                Filename = filename,
+                Filename = uploadS3FileDto.Filename,
                 ErrorMessage = $"S3 upload failed: {ex.Message}"
             };
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Upload failed for file: {Filename}", filename);
+            logger.LogError(ex, "Upload failed for file: {Filename}", uploadS3FileDto.Filename);
             throw;
         }
     }
@@ -181,53 +199,28 @@ public class S3StorageService(
     /// Get all versions of a document.
     /// </summary>
     public async Task<List<DocumentVersion>> GetDocumentVersionsAsync(
-        string organizationId,
-        DocumentCategory category,
-        string documentId,
+        string s3Key,
         CancellationToken cancellationToken = default)
     {
-        var prefix = $"{OrganizationsPrefix}/{organizationId}/{DateTime.UtcNow.Year}/{category.ToString().ToLowerInvariant()}/{documentId}_";
-
         // Also search previous years
         var versions = new List<DocumentVersion>();
-        var currentYear = DateTime.UtcNow.Year;
 
-        for (var year = currentYear; year >= currentYear - 5; year--)
+        var response = await s3Client.ListVersionsAsync(new ListVersionsRequest()
         {
-            var yearPrefix = $"{OrganizationsPrefix}/{organizationId}/{year}/{category.ToString().ToLowerInvariant()}/{documentId}_";
+            BucketName = _settings.BucketName,
+            Prefix = s3Key,
+        }, cancellationToken);
 
-            var response = await s3Client.ListObjectsV2Async(new ListObjectsV2Request
+        return response.Versions.OrderBy(e => e.LastModified)
+            .Select((e, i) => new DocumentVersion()
             {
-                BucketName = _settings.BucketName,
-                Prefix = yearPrefix
-            }, cancellationToken);
-
-            foreach (var obj in response.S3Objects)
-            {
-                var versionMatch = Regex.Match(obj.Key, @"_v(\d+)_");
-                if (versionMatch.Success && int.TryParse(versionMatch.Groups[1].Value, out var ver))
-                {
-                    versions.Add(new DocumentVersion
-                    {
-                        Version = ver,
-                        S3Key = obj.Key,
-                        SizeBytes = obj.Size ?? 0,
-                        CreatedAt = obj.LastModified ?? DateTime.MinValue,
-                        IsCurrent = false
-                    });
-                }
-            }
-        }
-
-        // Mark the highest version as current
-        if (versions.Count > 0)
-        {
-            var maxVersion = versions.Max(v => v.Version);
-            var current = versions.First(v => v.Version == maxVersion);
-            current.IsCurrent = true;
-        }
-
-        return versions.OrderByDescending(v => v.Version).ToList();
+                S3Key = e.Key,
+                SizeBytes = e.Size ?? 0,
+                Version = i + 1,
+                CreatedAt = e.LastModified ?? new DateTime(),
+                IsCurrent = e.IsLatest ?? false,
+                S3VersionId = e.VersionId
+            }).ToList();
     }
 
     /// <inheritdoc />
@@ -435,23 +428,19 @@ public class S3StorageService(
     }
 
     private async Task<int> GetNextVersionAsync(
-        string organizationId,
-        DocumentCategory category,
-        string documentId,
+        string s3Key,
         CancellationToken cancellationToken)
     {
-        var versions = await GetDocumentVersionsAsync(organizationId, category, documentId, cancellationToken);
+        var versions = await GetDocumentVersionsAsync(s3Key, cancellationToken);
         return versions.Count > 0 ? versions.Max(v => v.Version) + 1 : 1;
     }
 
     private async Task CleanupOldVersionsAsync(
-        string organizationId,
-        DocumentCategory category,
-        string documentId,
+        string s3Key,
         int maxVersions,
         CancellationToken cancellationToken)
     {
-        var versions = await GetDocumentVersionsAsync(organizationId, category, documentId, cancellationToken);
+        var versions = await GetDocumentVersionsAsync(s3Key, cancellationToken);
 
         if (versions.Count <= maxVersions)
             return;
@@ -467,8 +456,8 @@ public class S3StorageService(
             {
                 await DeleteFileAsync(version.S3Key, cancellationToken);
                 logger.LogInformation(
-                    "Deleted old version {Version} of document {DocumentId}",
-                    version.Version, documentId);
+                    "Deleted old version {Version} of document {s3Key}",
+                    version.Version, s3Key);
             }
             catch (Exception ex)
             {
@@ -485,14 +474,13 @@ public class S3StorageService(
         string organizationId,
         DocumentCategory category,
         string filename,
-        string documentId,
         int version)
     {
         var year = DateTime.UtcNow.ToString("yyyy");
         var safeFilename = SanitizeFilename(filename);
         var categoryFolder = category.ToString().ToLowerInvariant();
 
-        return $"{OrganizationsPrefix}/{organizationId}/{year}/{categoryFolder}/{documentId}_v{version}_{safeFilename}";
+        return $"{OrganizationsPrefix}/{organizationId}/{year}/{categoryFolder}/v{version}_{safeFilename}";
     }
 
     private static string SanitizeFilename(string filename)

@@ -35,6 +35,7 @@ public class Document : Entity
         string contentType,
         long fileSize,
         DocumentCategory category,
+        string s3Key,
         string? description = null,
         string? createdBy = null)
     {
@@ -49,10 +50,9 @@ public class Document : Entity
             Description = description,
             Status = DocumentStatus.Draft,
             CurrentVersion = 1,
-            CreatedBy = createdBy
+            CreatedBy = createdBy,
+            S3Key = s3Key
         };
-
-        document.AddStatusHistory(DocumentStatus.Draft, "Document created", createdBy);
 
         return document;
     }
