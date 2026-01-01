@@ -1,6 +1,4 @@
 using Dotland.FileSyncHub.Application.Common.Services;
-using Dotland.FileSyncHub.Application.Versioning.DTOs;
-using Dotland.FileSyncHub.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,25 +20,10 @@ public class GetAllVersioningConfigurationsQueryHandler(IApplicationDbContext ap
         return new GetAllVersioningConfigurationsResult
         {
             Configurations = configs
-                .Select(MapToDto)
+                .Select(Converters.MapToOrganizationVersioningConfigurationDto)
                 .ToList()
         };
     }
     
-    private static OrganizationVersioningConfigurationDto MapToDto(OrganizationVersioningConfiguration config)
-    {
-        return new OrganizationVersioningConfigurationDto(
-            config.Id,
-            config.OrganizationId,
-            config.DefaultVersioningEnabled,
-            config.DefaultMaxVersions,
-            config.IsActive,
-            config.CategoryConfigurations.Select(c => new CategoryVersioningConfigurationDto(
-                c.Id,
-                c.Category,
-                c.VersioningEnabled,
-                c.MaxVersions
-            )).ToList()
-        );
-    }
+    
 }

@@ -9,8 +9,8 @@ namespace Dotland.FileSyncHub.Domain.Entities;
 public class OrganizationVersioningConfiguration : Entity
 {
     public string OrganizationId { get; private set; } = null!;
-    public bool DefaultVersioningEnabled { get; private set; }
-    public int DefaultMaxVersions { get; private set; }
+    public bool DefaultVersioningEnabled { get; set; }
+    public int DefaultMaxVersions { get; set; }
     public bool IsActive { get; private set; }
 
     private readonly List<CategoryVersioningConfiguration> _categoryConfigurations = new();
