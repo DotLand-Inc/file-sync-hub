@@ -3,6 +3,7 @@ using System;
 using Dotland.FileSyncHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dotland.FileSyncHub.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FileSyncHubDbContext))]
-    partial class FileSyncHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260101000001_AddDocumentRelations")]
+    partial class AddDocumentRelations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -141,6 +144,46 @@ namespace Dotland.FileSyncHub.Infrastructure.Persistence.Migrations
                     b.ToTable("Documents", (string)null);
                 });
 
+            modelBuilder.Entity("Dotland.FileSyncHub.Domain.Entities.DocumentRelation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("SourceDocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetDocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceDocumentId")
+                        .IsUnique();
+
+                    b.HasIndex("TargetDocumentId");
+
+                    b.ToTable("DocumentRelations", (string)null);
+                });
+
             modelBuilder.Entity("Dotland.FileSyncHub.Domain.Entities.DocumentStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -185,51 +228,15 @@ namespace Dotland.FileSyncHub.Infrastructure.Persistence.Migrations
                     b.ToTable("DocumentStatusHistory", (string)null);
                 });
 
-            modelBuilder.Entity("Dotland.FileSyncHub.Domain.Entities.DocumentRelation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TargetDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SourceDocumentId")
-                        .IsUnique();
-
-                    b.HasIndex("TargetDocumentId");
-
-                    b.ToTable("DocumentRelations", (string)null);
-                });
-
             modelBuilder.Entity("Dotland.FileSyncHub.Domain.Entities.DocumentVersion", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("AwsVersionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Comment")
                         .HasMaxLength(1000)
@@ -260,10 +267,6 @@ namespace Dotland.FileSyncHub.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("AwsVersionId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

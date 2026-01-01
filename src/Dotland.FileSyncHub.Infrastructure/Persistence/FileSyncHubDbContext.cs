@@ -12,6 +12,7 @@ public class FileSyncHubDbContext(DbContextOptions<FileSyncHubDbContext> options
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<DocumentStatusHistory> DocumentStatusHistory => Set<DocumentStatusHistory>();
+    public DbSet<DocumentRelation> DocumentRelations => Set<DocumentRelation>();
     public DbSet<OrganizationVersioningConfiguration> OrganizationVersioningConfigurations => Set<OrganizationVersioningConfiguration>();
     public DbSet<CategoryVersioningConfiguration> CategoryVersioningConfigurations => Set<CategoryVersioningConfiguration>();
 

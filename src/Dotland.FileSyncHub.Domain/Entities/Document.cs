@@ -26,6 +26,12 @@ public class Document : Entity
     private readonly List<DocumentStatusHistory> _statusHistory = new();
     public IReadOnlyCollection<DocumentStatusHistory> StatusHistory => _statusHistory.AsReadOnly();
 
+    private readonly List<DocumentRelation> _parentRelations = new();
+    public IReadOnlyCollection<DocumentRelation> ParentRelations => _parentRelations.AsReadOnly();
+
+    private readonly List<DocumentRelation> _childRelations = new();
+    public IReadOnlyCollection<DocumentRelation> ChildRelations => _childRelations.AsReadOnly();
+
     private Document() { }
 
     public static Document Create(
