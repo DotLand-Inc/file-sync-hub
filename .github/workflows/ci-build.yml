@@ -23,7 +23,7 @@ on:
 
 env:
   DOCKER_USERNAME: hsaii
-  WEB_IMAGE: filesyncapi/web
+  WEB_IMAGE: hsaii/dms-api
 
 jobs:
   build-and-test:
@@ -42,13 +42,15 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore file-sync-hub.sln
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build file-sync-hub.sln --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      # Skip test step as there are no test projects in the solution yet
+      # Uncomment when test projects are added
+      # - name: Test
+      #   run: dotnet test file-sync-hub.sln --no-build --configuration Release --verbosity normal
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,7 +68,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: ${{ inputs.push_images == true }}
-          tags: ${{ env.DOCKER_USERNAME }}/filesync-web:${{ inputs.image_tag || 'develop' }}
+          tags: ${{ env.WEB_IMAGE }}:${{ inputs.image_tag || 'develop' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |

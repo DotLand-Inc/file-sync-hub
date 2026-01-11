@@ -44,9 +44,9 @@ The following environment variables are configured in the workflows:
 
 The workflows build and push the following Docker images:
 
-- `hsaii/filesync-web:develop` - Built on every push to develop
-- `hsaii/filesync-web:latest` - Built on every push to main
-- `hsaii/filesync-web:<version>` - Built on every push to main with version from .csproj
+- `hsaii/dms-api:develop` - Built on every push to develop
+- `hsaii/dms-api:latest` - Built on every push to main
+- `hsaii/dms-api:<version>` - Built on every push to main with version from .csproj
 
 ## Setup Instructions
 
