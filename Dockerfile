@@ -12,7 +12,7 @@ COPY src/Dotland.FileSyncHub.Infrastructure/*.csproj ./src/Dotland.FileSyncHub.I
 COPY src/Dotland.FileSyncHub.Web/*.csproj ./src/Dotland.FileSyncHub.Web/
 
 # Restore dependencies
-RUN dotnet restore
+RUN dotnet restore file-sync-hub.sln
 
 # Copy source code
 COPY src/ ./src/
@@ -27,21 +27,15 @@ RUN dotnet publish src/Dotland.FileSyncHub.Web/Dotland.FileSyncHub.Web.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -u 1000 -G appuser -s /bin/sh -D appuser
-
 # Install curl for healthchecks
 RUN apk add --no-cache curl
 
 # Copy published app
 COPY --from=build /app/publish .
 
-# Set ownership
-RUN chown -R appuser:appuser /app
 
-# Switch to non-root user
-USER appuser
+# # Switch to non-root user
+# USER appuser
 
 # Environment variables
 # ASP.NET Core
