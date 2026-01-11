@@ -43,6 +43,27 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
+# Environment variables
+# ASP.NET Core
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_URLS=http://+:5000 \
+    AllowedHosts=* \
+    # Database
+    UseInMemoryDatabase=false \
+    ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=filesyncdb;Username=postgres;Password=changeme" \
+    # S3 Configuration
+    S3__Region=eu-west-1 \
+    S3__BucketName=filesync-bucket \
+    S3__ServiceUrl="" \
+    S3__MaxFileSizeMb=100 \
+    # AWS Credentials (should be overridden at runtime)
+    AWS_ACCESS_KEY_ID="" \
+    AWS_SECRET_ACCESS_KEY="" \
+    # Logging
+    Logging__LogLevel__Default=Information \
+    Logging__LogLevel__Microsoft.AspNetCore=Warning \
+    Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Information
+
 # Expose port
 EXPOSE 5000
 
