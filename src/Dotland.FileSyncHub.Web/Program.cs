@@ -1,5 +1,6 @@
 using Dotland.FileSyncHub.Application;
 using Dotland.FileSyncHub.Application.Common.Settings;
+using Dotland.FileSyncHub.Domain.Common.Exceptions;
 using Dotland.FileSyncHub.Infrastructure;
 using Dotland.FileSyncHub.Infrastructure.Persistence;
 using Dotland.FileSyncHub.Web.Infrastructure;
@@ -39,6 +40,32 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Authentication
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        var authority = builder.Configuration["Keycloak:Authority"];
+        if(string.IsNullOrEmpty(authority)) throw new ConfigurationKeyException("Keycloak:Authority");
+        
+        var audience = builder.Configuration["Keycloak:Audience"];
+        if(string.IsNullOrEmpty(audience)) throw new ConfigurationKeyException("Keycloak:Audience");
+        
+        var metadata = builder.Configuration["Keycloak:MetadataAddress"];
+        if(string.IsNullOrEmpty(metadata)) throw new ConfigurationKeyException("Keycloak:MetadataAddress");
+        
+        options.Authority = authority;
+        options.Audience = audience;
+        options.MetadataAddress = metadata;
+        options.RequireHttpsMetadata = bool.Parse(builder.Configuration["Keycloak:RequireHttpsMetadata"] ?? "true");
+        
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidIssuer = authority
+        };
+    });
+
 var app = builder.Build();
 
 // Apply database migrations automatically on startup
@@ -57,6 +84,10 @@ app.UseExceptionHandler();
 // }
 
 app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 // Health check endpoint
