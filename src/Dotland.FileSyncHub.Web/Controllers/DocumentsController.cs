@@ -1,6 +1,7 @@
 using Dotland.FileSyncHub.Application.Common.Models;
 using Dotland.FileSyncHub.Application.Documents.Commands.DeleteDocument;
 using Dotland.FileSyncHub.Application.Documents.Queries.DocumentDirectDownload;
+using Dotland.FileSyncHub.Application.Documents.Queries.GetCategories;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetDocumentsList;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetDocumentVersions;
 using Dotland.FileSyncHub.Application.Documents.Queries.GetDownloadUrl;
@@ -175,6 +176,12 @@ public class DocumentsController(IMediator mediator) : ControllerBase
     /// <summary>
     /// List documents for an organization.
     /// </summary>
+    [HttpGet("categories")]
+    public async Task<ActionResult<List<CategoryDto>>> GetCategories()
+    {
+        return await mediator.Send(new GetCategoriesQuery());
+    }
+
     [HttpGet("{organizationId}/list")]
     [ProducesResponseType(typeof(GetDocumentsListResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDocumentsListAsync(

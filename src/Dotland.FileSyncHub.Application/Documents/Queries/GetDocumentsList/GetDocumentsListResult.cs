@@ -10,7 +10,10 @@ public class GetDocumentsListResult
     /// <summary>
     /// List of files.
     /// </summary>
-    public List<S3FileInfo> Files { get; set; } = new();
+    /// <summary>
+    /// List of documents.
+    /// </summary>
+    public List<DocumentDto> Documents { get; set; } = new();
 
     /// <summary>
     /// Total number of files.

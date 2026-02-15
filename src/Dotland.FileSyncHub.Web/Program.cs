@@ -18,6 +18,10 @@ builder.Services.Configure<S3Settings>(builder.Configuration.GetSection(S3Settin
 // Clean Architecture layers
 builder.Services.AddWebServices(builder.Configuration);
 
+// Context Accessor and Current User Service
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Dotland.FileSyncHub.Application.Common.Services.ICurrentUserService, Dotland.FileSyncHub.Web.Services.CurrentUserService>();
+
 // Exception Handling
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 builder.Services.AddProblemDetails();
