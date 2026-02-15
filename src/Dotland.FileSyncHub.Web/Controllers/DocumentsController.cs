@@ -8,6 +8,7 @@ using Dotland.FileSyncHub.Application.Documents.Queries.GetVersioningStatus;
 using Dotland.FileSyncHub.Domain.Enums;
 using Dotland.FileSyncHub.Web.Models.Requests;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
@@ -16,6 +17,7 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// API controller for document management operations.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class DocumentsController(IMediator mediator) : ControllerBase
 {

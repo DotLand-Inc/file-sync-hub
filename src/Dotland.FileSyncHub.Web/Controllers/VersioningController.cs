@@ -10,6 +10,7 @@ using Dotland.FileSyncHub.Application.Versioning.Queries.GetMaxVersions;
 using Dotland.FileSyncHub.Application.Versioning.Queries.GetVersioningConfiguration;
 using Dotland.FileSyncHub.Domain.Enums;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dotland.FileSyncHub.Web.Controllers;
@@ -18,6 +19,7 @@ namespace Dotland.FileSyncHub.Web.Controllers;
 /// API controller for managing versioning configurations
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/versioning")]
 public class VersioningController(IMediator mediator) : ControllerBase
 {
