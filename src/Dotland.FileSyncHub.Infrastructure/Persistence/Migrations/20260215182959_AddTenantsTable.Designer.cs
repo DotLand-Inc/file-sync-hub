@@ -3,6 +3,7 @@ using System;
 using Dotland.FileSyncHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dotland.FileSyncHub.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FileSyncHubDbContext))]
-    partial class FileSyncHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260215182959_AddTenantsTable")]
+    partial class AddTenantsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

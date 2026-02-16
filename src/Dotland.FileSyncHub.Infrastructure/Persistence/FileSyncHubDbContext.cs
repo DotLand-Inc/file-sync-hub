@@ -14,6 +14,7 @@ public class FileSyncHubDbContext(DbContextOptions<FileSyncHubDbContext> options
     public DbSet<DocumentStatusHistory> DocumentStatusHistory => Set<DocumentStatusHistory>();
     public DbSet<DocumentRelation> DocumentRelations => Set<DocumentRelation>();
     public DbSet<OrganizationVersioningConfiguration> OrganizationVersioningConfigurations => Set<OrganizationVersioningConfiguration>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<CategoryVersioningConfiguration> CategoryVersioningConfigurations => Set<CategoryVersioningConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
